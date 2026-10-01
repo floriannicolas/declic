@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0d0e10;
+  --surface: #16181c;
+  --surface-2: #1e2126;
+  --line: #2b2f36;
+  --text: #ecebe6;
+  --muted: #9a9ca3;
+  --accent: #ffb020;
+  --accent-soft: rgb(255 176 32 / 0.14);
+  --accent-ink: #1c1300;
+  --good: #3ddc84;
+  --good-soft: rgb(61 220 132 / 0.14);
+  --bad: #ff6159;
+  --bad-soft: rgb(255 97 89 / 0.14);
+  --hot: #ff7a1a;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --bar-height: 3.5rem;
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-hot: var(--hot);
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+
+  --text-fluid-xs: clamp(0.75rem, 0.72rem + 0.15vw, 0.8125rem);
+  --text-fluid-sm: clamp(0.875rem, 0.84rem + 0.2vw, 0.9375rem);
+  --text-fluid-base: clamp(1rem, 0.96rem + 0.2vw, 1.0625rem);
+  --text-fluid-lg: clamp(1.125rem, 1.05rem + 0.4vw, 1.3125rem);
+  --text-fluid-xl: clamp(1.375rem, 1.2rem + 0.9vw, 1.875rem);
+  --text-fluid-2xl: clamp(1.75rem, 1.4rem + 1.8vw, 2.75rem);
+}
+
+/* Small phones in landscape: the simulator switches to a two column layout. */
+@custom-variant landscape-phone (@media (orientation: landscape) and (max-height: 540px));
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+button {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+mark {
+  background: transparent;
+  color: inherit;
+}
+
+@keyframes grain-shift {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-6%, 4%); }
+  50% { transform: translate(5%, -3%); }
+  75% { transform: translate(-3%, -6%); }
+  100% { transform: translate(0, 0); }
+}
+
+.grain {
+  animation: grain-shift 0.5s steps(4) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grain {
+    animation: none;
+  }
+}
