@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, animate, motion, useMotionValue } from "motion/react";
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatAperture, formatSeconds } from "@/engine/format";
 import { shuffle } from "@/engine/random";
@@ -45,6 +45,15 @@ export function SimulatorMode({ chapter, camera, onAnswer, onProgress, onComplet
   const [limit, setLimit] = useState<{ message: string; key: number } | null>(null);
 
   const done = round.n - 1 + (scored ? 1 : 0);
+
+  // Back to the top for each new scenario, once it is rendered: a smooth scroll
+  // started during the click would be cancelled by the layout change (iOS Safari).
+  const reduced = useReducedMotion();
+  useEffect(() => {
+    if (round.n === 1) return;
+    const frame = requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" }));
+    return () => cancelAnimationFrame(frame);
+  }, [round.n, reduced]);
 
   // Bring the verdict into view as soon as the shot is taken.
   const resultRef = useRef<HTMLDivElement>(null);
@@ -96,7 +105,6 @@ export function SimulatorMode({ chapter, camera, onAnswer, onProgress, onComplet
     setScored(false);
     setLimit(null);
     setRound((r) => ({ n: r.n + 1, scenario }));
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const { scenario, mounted } = setup;

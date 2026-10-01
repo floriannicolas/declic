@@ -57,7 +57,8 @@ html,
 body {
   background: var(--bg);
   color: var(--text);
-  overflow-x: hidden;
+  /* clip, not hidden: hidden turns body into a scroll container and breaks window.scrollTo. */
+  overflow-x: clip;
 }
 
 body {
