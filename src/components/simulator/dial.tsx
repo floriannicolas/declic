@@ -38,9 +38,11 @@ interface Props {
   onActivate?: () => void;
   locked?: boolean;
   className?: string;
+  /** Optional help control shown next to the caption. */
+  help?: React.ReactNode;
 }
 
-export function Dial({ scale, caption, index, position, onChange, onLimit, onActivate, locked, className }: Props) {
+export function Dial({ scale, caption, index, position, onChange, onLimit, onActivate, locked, className, help }: Props) {
   const rotate = useTransform(position, (p) => -detent(p) * STEP_DEG);
   const [pointer, animatePointer] = useAnimate();
   const surface = useRef<HTMLDivElement>(null);
@@ -181,7 +183,10 @@ export function Dial({ scale, caption, index, position, onChange, onLimit, onAct
 
   return (
     <div className={`flex flex-col items-center gap-2 ${className ?? ""}`}>
-      <span className="text-fluid-xs font-medium uppercase tracking-[0.2em] text-muted">{caption}</span>
+      <div className="flex min-h-11 items-center gap-2">
+        <span className="text-fluid-xs font-medium uppercase tracking-[0.2em] text-muted">{caption}</span>
+        {help}
+      </div>
       <div
         ref={surface}
         role="slider"

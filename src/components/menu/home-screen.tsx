@@ -2,10 +2,11 @@
 
 import { motion } from "motion/react";
 import { chapters } from "@/data/chapters";
+import { photoCredits } from "@/data/photo-credits";
 import { useCamera } from "@/progress/use-progress";
 import { micro } from "../motion-tokens";
 
-export function HomeScreen({ onOpen }: { onOpen: (chapterId: string) => void }) {
+export function HomeScreen({ onOpen, onCamera3d }: { onOpen: (chapterId: string) => void; onCamera3d: () => void }) {
   const { camera, cameras, select } = useCamera();
 
   return (
@@ -47,6 +48,60 @@ export function HomeScreen({ onOpen }: { onOpen: (chapterId: string) => void }) 
           ))}
         </ul>
       </section>
+
+      {camera.parts && camera.parts.length > 0 && (
+        <section aria-labelledby="boitier" className="flex flex-col gap-3">
+          <h2 id="boitier" className="text-fluid-sm font-medium text-muted">
+            Mon boîtier
+          </h2>
+          <motion.button
+            type="button"
+            onClick={onCamera3d}
+            whileTap={{ scale: 0.98 }}
+            transition={micro}
+            className="group flex w-full items-center gap-4 rounded-2xl border border-line bg-surface p-4 text-left transition-colors hover:border-accent/50 sm:p-5"
+          >
+            <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-full border-2 border-accent text-fluid-sm font-semibold text-accent">
+              3D
+            </span>
+            <span className="flex min-w-0 flex-col gap-1">
+              <span className="text-fluid-lg font-semibold leading-snug">
+                Le {camera.model} en 3D
+              </span>
+              <span className="text-fluid-sm text-muted">
+                Fais tourner l&apos;appareil et découvre ses {camera.parts.length} commandes, une par une.
+              </span>
+            </span>
+            <span aria-hidden className="ml-auto text-muted transition-transform group-hover:translate-x-1">
+              →
+            </span>
+          </motion.button>
+        </section>
+      )}
+
+      {Object.keys(photoCredits).length > 0 && (
+        <details className="group rounded-2xl border border-line bg-surface p-4 text-fluid-xs text-muted">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-fluid-sm text-text">
+            Crédits photos
+            <span aria-hidden className="transition-transform group-open:rotate-180">⌄</span>
+          </summary>
+          <ul className="mt-2 flex flex-col gap-2 leading-relaxed">
+            {Object.entries(photoCredits).map(([file, c]) => (
+              <li key={file}>
+                {c.usage} :{" "}
+                <a href={c.sourceUrl} className="underline decoration-line underline-offset-2 hover:text-text" target="_blank" rel="noreferrer">
+                  photo de {c.author}
+                </a>
+                ,{" "}
+                <a href={c.licenseUrl} className="underline decoration-line underline-offset-2 hover:text-text" target="_blank" rel="noreferrer">
+                  {c.license}
+                </a>
+                . {c.changes}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {cameras.length > 1 && (
         <section aria-labelledby="reglages" className="flex flex-col gap-3">

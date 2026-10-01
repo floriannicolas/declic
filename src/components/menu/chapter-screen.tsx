@@ -13,9 +13,10 @@ interface Props {
   camera: Camera;
   onBack: () => void;
   onPlay: (mode: ModeId) => void;
+  onGlossary: () => void;
 }
 
-export function ChapterScreen({ chapter, camera, onBack, onPlay }: Props) {
+export function ChapterScreen({ chapter, camera, onBack, onPlay, onGlossary }: Props) {
   const { record } = useProgress();
   const modes = availableModes(chapter, camera);
 
@@ -58,6 +59,21 @@ export function ChapterScreen({ chapter, camera, onBack, onPlay }: Props) {
           );
         })}
       </ul>
+
+      {chapter.vocabulary.length > 0 && (
+        <motion.button
+          type="button"
+          onClick={onGlossary}
+          whileTap={{ scale: 0.98 }}
+          className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-dashed border-line px-4 text-left transition-colors hover:border-accent/60 sm:px-5"
+        >
+          <span className="flex flex-col">
+            <span className="text-fluid-base font-semibold">Lexique du chapitre</span>
+            <span className="text-fluid-xs text-muted">{chapter.vocabulary.length} notions expliquées et illustrées, à relire sans jouer</span>
+          </span>
+          <span aria-hidden className="text-muted">→</span>
+        </motion.button>
+      )}
     </main>
   );
 }

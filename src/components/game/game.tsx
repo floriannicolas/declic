@@ -8,6 +8,8 @@ import { availableModes } from "@/engine/modes";
 import { useCamera } from "@/progress/use-progress";
 import type { Camera } from "@/types";
 import { ChapterScreen } from "../menu/chapter-screen";
+import { Camera3dScreen } from "../menu/camera3d-screen";
+import { GlossaryScreen } from "../menu/glossary-screen";
 import { HomeScreen } from "../menu/home-screen";
 import { ModeScreen } from "../play/mode-screen";
 import { DURATION, EASE_OUT } from "../motion-tokens";
@@ -15,6 +17,7 @@ import { parseRoute, routeDepth, routePath, type Route } from "./routes";
 
 interface Navigation {
   key: string;
+  screen: Route["screen"];
   depth: number;
   /** 1 forward, -1 back. */
   direction: number;
@@ -44,9 +47,10 @@ export function Game() {
   const key = routePath(route);
   const depth = routeDepth(route);
 
-  const [nav, setNav] = useState<Navigation>({ key, depth, direction: 0, morph: false });
+  const [nav, setNav] = useState<Navigation>({ key, screen: route.screen, depth, direction: 0, morph: false });
   if (nav.key !== key) {
-    setNav({ key, depth, direction: Math.sign(depth - nav.depth), morph: Math.min(depth, nav.depth) === 1 && Math.max(depth, nav.depth) === 2 });
+    const pair = new Set([nav.screen, route.screen]);
+    setNav({ key, screen: route.screen, depth, direction: Math.sign(depth - nav.depth), morph: pair.has("chapter") && pair.has("mode") });
   }
 
   const navigate = useCallback((next: Route) => {
@@ -69,14 +73,21 @@ export function Game() {
             exit="exit"
             className="min-h-dvh w-full"
           >
-            {route.screen === "home" && <HomeScreen onOpen={(chapterId) => navigate({ screen: "chapter", chapterId })} />}
+            {route.screen === "home" && (
+              <HomeScreen onOpen={(chapterId) => navigate({ screen: "chapter", chapterId })} onCamera3d={() => navigate({ screen: "camera3d" })} />
+            )}
+            {route.screen === "camera3d" && <Camera3dScreen camera={camera} onBack={() => navigate({ screen: "home" })} />}
             {route.screen === "chapter" && (
               <ChapterScreen
                 chapter={findChapter(route.chapterId)!}
                 camera={camera}
                 onBack={() => navigate({ screen: "home" })}
                 onPlay={(mode) => navigate({ screen: "mode", chapterId: route.chapterId, mode })}
+                onGlossary={() => navigate({ screen: "glossary", chapterId: route.chapterId })}
               />
+            )}
+            {route.screen === "glossary" && (
+              <GlossaryScreen chapter={findChapter(route.chapterId)!} onBack={() => navigate({ screen: "chapter", chapterId: route.chapterId })} />
             )}
             {route.screen === "mode" && (
               <ModeScreen
@@ -96,8 +107,10 @@ export function Game() {
 /** Falls back to the closest valid screen if a URL points to missing content. */
 function resolve(route: Route, camera: Camera): Route {
   if (route.screen === "home") return route;
+  if (route.screen === "camera3d") return camera.parts?.length ? route : { screen: "home" };
   const chapter = findChapter(route.chapterId);
   if (!chapter) return { screen: "home" };
+  if (route.screen === "glossary" && chapter.vocabulary.length === 0) return { screen: "chapter", chapterId: chapter.id };
   if (route.screen === "mode" && !availableModes(chapter, camera).some((m) => m.id === route.mode))
     return { screen: "chapter", chapterId: chapter.id };
   return route;

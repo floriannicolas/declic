@@ -25,9 +25,29 @@ export type PreviewSubject =
 export type PreviewMotion =
   | { type: "none" }
   /** The subject moves: motion blur beyond this duration. */
-  | { type: "subject"; freezeAt: number; direction: "horizontal" | "vertical" }
+  | {
+      type: "subject";
+      freezeAt: number;
+      direction: "horizontal" | "vertical";
+      /** Exact direction of the motion in the frame, in degrees (0 = to the right, 90 = downwards). */
+      angle?: number;
+    }
   /** The photographer pans with the subject: background streaks, subject stays sharp within the range. */
   | { type: "panning"; slowest: number; fastest: number };
+
+/** Where a cut out subject sits in the frame, in fractions of the frame size. */
+export type SubjectPlacement =
+  /** Same framing as the background: a layer extracted from the same photo. */
+  | { kind: "fill" }
+  | { kind: "box"; centerX: number; bottom: number; height: number };
+
+/** Real photo layers for the live preview. Paths are relative to /public. */
+export interface PreviewPhoto {
+  background: string;
+  subject?: { src: string; placement: SubjectPlacement; silhouette?: boolean; flip?: boolean };
+  /** Key of the photo credits registry. */
+  credits: readonly string[];
+}
 
 export interface Scenario {
   id: string;
@@ -41,7 +61,7 @@ export interface Scenario {
   exposureBias?: number;
   support: "handheld" | "tripod";
   constraints: readonly Constraint[];
-  preview: { ambience: Ambience; subject: PreviewSubject; motion: PreviewMotion };
+  preview: { ambience: Ambience; subject: PreviewSubject; motion: PreviewMotion; photo?: PreviewPhoto };
   /** May contain {lens}, {maxAperture}, {maxShutter}, {stabilization}, {model} placeholders. */
   explanation: string;
   keyword?: string;

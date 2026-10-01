@@ -18,8 +18,14 @@ export interface PreviewEffects {
   starburst: number;
 }
 
-export const smearAxis = (scenario: Scenario): "x" | "y" =>
-  scenario.preview.motion.type === "subject" && scenario.preview.motion.direction === "vertical" ? "y" : "x";
+/** Unit vector of the subject's motion blur in the frame. */
+export function smearDirection(scenario: Scenario): [number, number] {
+  const motion = scenario.preview.motion;
+  if (motion.type !== "subject") return [1, 0];
+  const degrees = motion.angle ?? (motion.direction === "vertical" ? 90 : 0);
+  const rad = (degrees * Math.PI) / 180;
+  return [Math.cos(rad), Math.sin(rad)];
+}
 
 const clamp = (x: number, min: number, max: number) => Math.min(Math.max(x, min), max);
 

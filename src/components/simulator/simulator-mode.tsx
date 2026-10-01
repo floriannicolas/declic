@@ -1,9 +1,9 @@
 "use client";
 
-import { AnimatePresence, motion, useMotionValue } from "motion/react";
+import { AnimatePresence, animate, motion, useMotionValue } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { formatAperture, formatSeconds } from "@/engine/format";
-import { Bag } from "@/engine/random";
+import { shuffle } from "@/engine/random";
 import {
   evaluateScenario,
   findSolution,
@@ -13,19 +13,23 @@ import {
   type ScenarioResult,
   type SettingIndices,
 } from "@/engine/simulator";
-import type { Camera, Chapter, Setting } from "@/types";
-import { DURATION, EASE_OUT, micro } from "../motion-tokens";
+import type { Setting } from "@/types";
+import { DURATION, EASE_OUT, SPRING, micro } from "../motion-tokens";
 import { ActionBar } from "../play/action-bar";
-import type { AnswerHandler } from "../play/mode-screen";
+import { GuideButton } from "../play/guide-sheet";
+import type { ModeProps } from "../play/mode-screen";
 import { Dial } from "./dial";
 import { ResultPanel } from "./result-panel";
 import { ScenePreview } from "./scene-preview";
 
 const LIMIT_TOAST_MS = 4500;
 
-export function SimulatorMode({ chapter, camera, onAnswer }: { chapter: Chapter; camera: Camera; onAnswer: AnswerHandler }) {
-  const [bag] = useState(() => new Bag(chapter.scenarios));
-  const [round, setRound] = useState(() => ({ n: 1, scenario: bag.next() }));
+const UNIT = { singular: "scénario", plural: "scénarios" };
+
+export function SimulatorMode({ chapter, camera, onAnswer, onProgress, onComplete }: ModeProps) {
+  const [scenarios] = useState(() => shuffle(chapter.scenarios));
+  const [round, setRound] = useState(() => ({ n: 1, scenario: scenarios[0] }));
+  const isLast = round.n === scenarios.length;
   const setup = useMemo(() => setupSimulator(camera, round.scenario), [camera, round.scenario]);
 
   const [indices, setIndices] = useState<SettingIndices>(() => initialIndices(setup));
@@ -35,8 +39,15 @@ export function SimulatorMode({ chapter, camera, onAnswer }: { chapter: Chapter;
     iso: useMotionValue(indices.iso),
   };
   const [active, setActive] = useState<Setting>(camera.screen.layout[0]);
-  const [result, setResult] = useState<{ result: ScenarioResult; example: SettingIndices | null } | null>(null);
+  const [result, setResult] = useState<{ result: ScenarioResult; example: SettingIndices | null; practice: boolean } | null>(null);
+  // Only the first shot of a scenario is scored; later ones are practice.
+  const [scored, setScored] = useState(false);
   const [limit, setLimit] = useState<{ message: string; key: number } | null>(null);
+
+  const done = round.n - 1 + (scored ? 1 : 0);
+  useEffect(() => {
+    onProgress({ done, total: scenarios.length, unit: UNIT });
+  }, [done, scenarios.length, onProgress]);
 
   useEffect(() => {
     if (!limit) return;
@@ -46,16 +57,37 @@ export function SimulatorMode({ chapter, camera, onAnswer }: { chapter: Chapter;
 
   const validate = () => {
     const evaluated = evaluateScenario(setup, indices);
-    setResult({ result: evaluated, example: evaluated.outcome === "correct" ? null : findSolution(setup, indices) });
-    onAnswer(evaluated.outcome);
+    setResult({ result: evaluated, example: evaluated.outcome === "correct" ? null : findSolution(setup, indices), practice: scored });
+    if (!scored) {
+      onAnswer(evaluated.outcome);
+      setScored(true);
+    }
+  };
+
+  /** Unlocks the dials, keeping the current settings. */
+  const retry = () => {
+    setResult(null);
+    document.querySelector("[data-dials]")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  /** Turns every dial to the closest right answer, so the preview shows what changes. */
+  const tryExample = () => {
+    const target = result?.example;
+    if (!target) return;
+    setResult(null);
+    (Object.keys(target) as Setting[]).forEach((s) => animate(positions[s], target[s], { ...SPRING.dial, delay: 0.15 }));
+    setIndices(target);
+    document.querySelector("[data-dials]")?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   const nextScenario = () => {
-    const scenario = bag.next();
+    if (isLast) return onComplete();
+    const scenario = scenarios[round.n];
     const start = initialIndices(setupSimulator(camera, scenario));
     (Object.keys(start) as Setting[]).forEach((s) => positions[s].jump(start[s]));
     setIndices(start);
     setResult(null);
+    setScored(false);
     setLimit(null);
     setRound((r) => ({ n: r.n + 1, scenario }));
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -77,12 +109,15 @@ export function SimulatorMode({ chapter, camera, onAnswer }: { chapter: Chapter;
           className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-6 landscape-phone:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] landscape-phone:gap-x-4"
         >
           <section className="flex flex-col gap-3 lg:col-span-2 landscape-phone:col-start-2 landscape-phone:gap-2">
-            <p className="tabular text-fluid-xs font-medium uppercase tracking-[0.2em] text-muted">Scénario {round.n}</p>
+            <p className="tabular text-fluid-xs font-medium uppercase tracking-[0.2em] text-muted">
+              Scénario {round.n} sur {scenarios.length}
+            </p>
             <h2 className="text-fluid-xl font-semibold leading-tight">{scenario.title}</h2>
             <p className="max-w-prose text-fluid-base leading-relaxed text-text/90 landscape-phone:text-fluid-sm">{scenario.situation}</p>
             <p className="max-w-prose rounded-xl border-l-4 border-accent bg-accent-soft px-3 py-2 text-fluid-base font-medium">
               {scenario.intent}
             </p>
+            {chapter.guides?.simulator && <GuideButton guide={chapter.guides.simulator} vocabulary={chapter.vocabulary} />}
             <ul className="flex flex-wrap gap-2 text-fluid-xs text-muted">
               <li className="rounded-full border border-line px-3 py-1">
                 {mounted.lens.name}
@@ -118,10 +153,11 @@ export function SimulatorMode({ chapter, camera, onAnswer }: { chapter: Chapter;
               ))}
             </div>
 
-            <div className="relative grid grid-cols-3 gap-3 rounded-[2rem] border border-line bg-bg/70 p-3 sm:gap-6 sm:p-5 max-sm:grid-cols-1 landscape-phone:grid-cols-1">
+            <div data-dials className="relative grid grid-cols-3 gap-3 rounded-[2rem] border border-line bg-bg/70 p-3 sm:gap-6 sm:p-5 max-sm:grid-cols-1 landscape-phone:grid-cols-1">
               {camera.screen.layout.map((s) => (
                 <Dial
                   key={s}
+                  help={chapter.guides?.[s] && <GuideButton guide={chapter.guides[s]} vocabulary={chapter.vocabulary} compact />}
                   scale={setup.scales[s]}
                   caption={camera.screen.captions[s]}
                   index={indices[s]}
@@ -162,13 +198,16 @@ export function SimulatorMode({ chapter, camera, onAnswer }: { chapter: Chapter;
                   example && `${formatSeconds(example.seconds)}, ${formatAperture(example.fNumber)}, ${example.iso} ISO`
                 }
                 settings={`${formatSeconds(values.seconds)}, ${formatAperture(values.fNumber)}, ${values.iso} ISO`}
+                practice={result.practice}
+                onRetry={result.result.outcome === "correct" ? undefined : retry}
+                onTryExample={result.example ? tryExample : undefined}
               />
             </div>
           )}
         </motion.div>
       </AnimatePresence>
 
-      <ActionBar label={result ? "Scénario suivant" : "Déclencher"} onClick={result ? nextScenario : validate} />
+      <ActionBar label={result ? (isLast ? "Voir le bilan" : "Scénario suivant") : "Déclencher"} onClick={result ? nextScenario : validate} />
     </>
   );
 }

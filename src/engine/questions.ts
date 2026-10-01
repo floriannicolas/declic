@@ -22,6 +22,7 @@ export function mcqToChoice(q: McqQuestion, rng: Rng, camera?: Camera): ChoiceQu
   return toChoice(q.id, fill(q.prompt), fill(q.answer), q.distractors.map(fill), {
     text: fill(q.explanation),
     keyword: q.keyword && fill(q.keyword),
+    more: q.more && { ...q.more, paragraphs: q.more.paragraphs.map(fill) },
   }, rng);
 }
 
@@ -36,13 +37,15 @@ export function termToChoice(term: Term, allTerms: readonly Term[], rng: Rng): C
       text: `${term.term} : ${term.definition}`,
       keyword: term.term,
       extra: term.pitfall ? { title: "Piège", text: term.pitfall } : undefined,
+      more: term.more,
+      moreTitle: term.term,
     },
     rng,
   );
 }
 
 export function termsToMatching(terms: readonly Term[], rng: Rng): MatchingRound {
-  const pairs = terms.map((t) => ({ id: t.id, term: t.term, definition: t.definition, pitfall: t.pitfall }));
+  const pairs = terms.map((t) => ({ id: t.id, term: t.term, definition: t.definition, pitfall: t.pitfall, more: t.more }));
   return {
     id: `match:${terms.map((t) => t.id).join("+")}`,
     pairs,
@@ -55,6 +58,7 @@ export function diagnosisToChoice(d: Diagnosis, rng: Rng): ChoiceQuestion {
     text: `La cause : ${d.cause.charAt(0).toLowerCase()}${d.cause.slice(1)}.`,
     keyword: d.cause.charAt(0).toLowerCase() + d.cause.slice(1),
     extra: { title: "Correction", text: d.fix },
+    more: d.more,
   }, rng);
 }
 

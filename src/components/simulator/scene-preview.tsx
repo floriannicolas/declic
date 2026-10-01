@@ -1,14 +1,17 @@
 "use client";
 
 import { motion, useTransform, type MotionValue } from "motion/react";
+import Image from "next/image";
 import { useLayoutEffect, useRef, useState } from "react";
-import { previewEffects, smearAxis, type PreviewEffects } from "@/engine/preview";
+import { previewEffects, smearDirection, type PreviewEffects } from "@/engine/preview";
 import { interpolate, type SimulatorSetup } from "@/engine/simulator";
+import type { PreviewPhoto } from "@/types";
 import { Backdrop, LIGHTS, PALETTES, Subject, VIEW } from "./scene-art";
 
 const GHOSTS = [1, 2, 3, 4];
 
-type Axis = "x" | "y";
+type Direction = readonly [number, number];
+const HORIZONTAL: Direction = [1, 0];
 
 const NOISE = `url("data:image/svg+xml;utf8,${encodeURIComponent(
   "<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 0 1'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>",
@@ -29,7 +32,7 @@ export function ScenePreview({
   positions: { shutter: MotionValue<number>; aperture: MotionValue<number>; iso: MotionValue<number> };
 }) {
   const { scenario, scales } = setup;
-  const { ambience, subject } = scenario.preview;
+  const { ambience, subject, photo } = scenario.preview;
   const frame = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
@@ -62,20 +65,20 @@ export function ScenePreview({
   const grain = useTransform(effects, (e) => e.grain * 0.7);
 
   const palette = PALETTES[ambience];
-  const lights = LIGHTS.slice(0, palette.lights);
-  const axis = smearAxis(scenario);
+  const lights = photo ? [] : LIGHTS.slice(0, palette.lights);
+  const direction = smearDirection(scenario);
 
   return (
     <div
       ref={frame}
       className="relative aspect-[3/2] w-full overflow-hidden rounded-2xl border border-line bg-black"
       role="img"
-      aria-label={`Aperçu schématique : ${scenario.title}`}
+      aria-label={`${photo ? "Aperçu" : "Aperçu schématique"} : ${scenario.title}`}
     >
       <motion.div className="absolute inset-0" style={{ filter: shakeFilter }}>
         <motion.div className="absolute -inset-[4%] will-change-[filter]" style={{ filter: backgroundFilter }}>
-          <Smeared smear={backgroundSmear} axis="x">
-            <Backdrop ambience={ambience} subject={subject} />
+          <Smeared smear={backgroundSmear} direction={HORIZONTAL}>
+            {photo ? <PhotoLayer src={photo.background} priority /> : <Backdrop ambience={ambience} subject={subject} />}
           </Smeared>
           {lights.length > 0 && (
             <svg viewBox={`0 0 ${VIEW.width} ${VIEW.height}`} preserveAspectRatio="xMidYMid slice" className="absolute inset-0 size-full">
@@ -111,9 +114,11 @@ export function ScenePreview({
           </motion.svg>
         )}
 
-        <Smeared smear={subjectSmear} axis={axis}>
-          <Subject subject={subject} ambience={ambience} />
-        </Smeared>
+        {(!photo || photo.subject) && (
+          <Smeared smear={subjectSmear} direction={direction}>
+            {photo?.subject ? <PhotoSubject subject={photo.subject} /> : <Subject subject={subject} ambience={ambience} />}
+          </Smeared>
+        )}
       </motion.div>
 
       <motion.div aria-hidden className="absolute inset-0 bg-black" style={{ opacity: darken }} />
@@ -125,16 +130,41 @@ export function ScenePreview({
   );
 }
 
+function PhotoLayer({ src, priority }: { src: string; priority?: boolean }) {
+  return <Image src={src} alt="" fill priority={priority} draggable={false} sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover select-none" />;
+}
+
+function PhotoSubject({ subject }: { subject: NonNullable<PreviewPhoto["subject"]> }) {
+  const style: React.CSSProperties = {
+    filter: subject.silhouette ? "brightness(0)" : undefined,
+    transform: subject.flip ? "scaleX(-1)" : undefined,
+  };
+  if (subject.placement.kind === "fill") {
+    return (
+      <div className="absolute inset-0" style={style}>
+        <PhotoLayer src={subject.src} />
+      </div>
+    );
+  }
+  const { centerX, bottom, height } = subject.placement;
+  return (
+    <div className="absolute" style={{ left: `${centerX * 100}%`, top: `${(bottom - height) * 100}%`, height: `${height * 100}%`, translate: "-50% 0" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- intrinsic width from a fixed height, which next/image cannot express */}
+      <img src={subject.src} alt="" draggable={false} className="h-full w-auto max-w-none select-none" style={style} />
+    </div>
+  );
+}
+
 /** Motion blur from composited copies: each ghost is translated and faded, nothing is repainted. */
-function Smeared({ smear, axis, children }: { smear: MotionValue<number>; axis: Axis; children: React.ReactNode }) {
-  const style = useOffset(smear, axis, 0);
+function Smeared({ smear, direction, children }: { smear: MotionValue<number>; direction: Direction; children: React.ReactNode }) {
+  const style = useOffset(smear, direction, 0);
   return (
     <div className="absolute inset-0">
       <motion.div className="absolute inset-0" style={style}>
         {children}
       </motion.div>
       {GHOSTS.map((k) => (
-        <Ghost key={k} smear={smear} axis={axis} k={k}>
+        <Ghost key={k} smear={smear} direction={direction} k={k}>
           {children}
         </Ghost>
       ))}
@@ -142,9 +172,9 @@ function Smeared({ smear, axis, children }: { smear: MotionValue<number>; axis: 
   );
 }
 
-function Ghost({ smear, axis, k, children }: { smear: MotionValue<number>; axis: Axis; k: number; children: React.ReactNode }) {
+function Ghost({ smear, direction, k, children }: { smear: MotionValue<number>; direction: Direction; k: number; children: React.ReactNode }) {
   const opacity = useTransform(smear, (s) => (s < 0.5 ? 0 : 0.42 * (1 - k / (GHOSTS.length + 1))));
-  const style = useOffset(smear, axis, k);
+  const style = useOffset(smear, direction, k);
   return (
     <motion.div aria-hidden className="absolute inset-0" style={{ ...style, opacity }}>
       {children}
@@ -152,7 +182,8 @@ function Ghost({ smear, axis, k, children }: { smear: MotionValue<number>; axis:
   );
 }
 
-function useOffset(smear: MotionValue<number>, axis: Axis, k: number) {
-  const shift = useTransform(smear, (s) => s * (k / GHOSTS.length - 0.5));
-  return axis === "x" ? { x: shift } : { y: shift };
+function useOffset(smear: MotionValue<number>, [dx, dy]: Direction, k: number) {
+  const x = useTransform(smear, (s) => s * (k / GHOSTS.length - 0.5) * dx);
+  const y = useTransform(smear, (s) => s * (k / GHOSTS.length - 0.5) * dy);
+  return { x, y };
 }

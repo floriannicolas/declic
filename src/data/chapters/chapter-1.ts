@@ -1,10 +1,14 @@
 import type { Chapter } from "@/types";
+import { details } from "./chapter-1-details";
+import { guides } from "./chapter-1-guides";
+
 
 export const chapter1: Chapter = {
   id: "chapter-1",
   number: 1,
   title: "Les bases de l'exposition et la mise au point",
   summary: "Triangle d'exposition, stops, modes P, S, A, M, mesure de la lumière et autofocus.",
+  guides,
 
   scenarios: [
     {
@@ -33,8 +37,7 @@ export const chapter1: Chapter = {
       preview: {
         ambience: "dusk",
         subject: "cyclist",
-        motion: { type: "panning", slowest: 1 / 15, fastest: 1 / 40 },
-      },
+        motion: { type: "panning", slowest: 1 / 15, fastest: 1 / 40 }, photo: { background: "/photos/bg-dusk-boulevard.webp", subject: { src: "/photos/subject-cyclist.webp", placement: { kind: "box", centerX: 0.5, bottom: 0.93, height: 0.42 } }, credits: ["bg-dusk-boulevard.webp", "subject-cyclist.webp"] } },
       explanation:
         "On suit le cycliste avec l'appareil pendant toute la pose : il reste immobile par rapport au capteur pendant que le décor défile. C'est la vitesse lente qui fait filer le fond.",
       keyword: "vitesse lente qui fait filer le fond",
@@ -57,8 +60,7 @@ export const chapter1: Chapter = {
       preview: {
         ambience: "daylight",
         subject: "golfer",
-        motion: { type: "subject", freezeAt: 1 / 1000, direction: "horizontal" },
-      },
+        motion: { type: "subject", freezeAt: 1 / 1000, direction: "horizontal" }, photo: { background: "/photos/bg-golf-course.webp", subject: { src: "/photos/subject-golfer.webp", placement: { kind: "box", centerX: 0.4, bottom: 0.97, height: 0.72 } }, credits: ["bg-golf-course.webp", "subject-golfer.webp"] } },
       explanation:
         "Un mouvement rapide demande une vitesse courte. À 55 mm, le {lens} ouvre au mieux à f/{maxAperture} : la lumière du matin permet 1/1000 s en relevant à peine l'ISO, vers 200.",
       keyword: "vitesse courte",
@@ -66,7 +68,7 @@ export const chapter1: Chapter = {
     {
       id: "portrait-blur",
       title: "Portrait avec fond flou",
-      situation: "Ton amie pose à l'ombre d'un arbre, devant une haie à une dizaine de mètres.",
+      situation: "Ton ami pose à l'ombre d'un arbre, devant une haie à une dizaine de mètres.",
       intent: "Tu veux son visage net et le fond bien flou.",
       lens: { role: "fast-prime", focalLength: 35 },
       ev: 11,
@@ -84,7 +86,7 @@ export const chapter1: Chapter = {
           message: "En dessous de 1/60 s, le moindre mouvement du modèle ou de tes mains se verra.",
         },
       ],
-      preview: { ambience: "overcast", subject: "portrait", motion: { type: "none" } },
+      preview: { ambience: "overcast", subject: "portrait", motion: { type: "none" }, photo: { background: "/photos/bg-shaded-hedge.webp", subject: { src: "/photos/subject-portrait.webp", placement: { kind: "box", centerX: 0.5, bottom: 1, height: 0.8 } }, credits: ["bg-shaded-hedge.webp", "subject-portrait.webp"] } },
       explanation:
         "Une grande ouverture réduit la profondeur de champ. Mais l'ouverture ne suffit pas : éloigne le sujet du fond et rapproche-toi de lui, c'est ce qui creuse vraiment l'écart de netteté.",
       keyword: "réduit la profondeur de champ",
@@ -110,7 +112,7 @@ export const chapter1: Chapter = {
           message: "Avec autant de lumière, reste à 100 ISO : aucun bruit, dynamique maximale.",
         },
       ],
-      preview: { ambience: "daylight", subject: "buildings", motion: { type: "none" } },
+      preview: { ambience: "daylight", subject: "buildings", motion: { type: "none" }, photo: { background: "/photos/bg-city-rooftops.webp", credits: ["bg-city-rooftops.webp"] } },
       explanation:
         "Fermer le diaphragme agrandit la zone de netteté. Entre f/8 et f/11, l'objectif donne aussi son meilleur piqué : au-delà, la diffraction commence à adoucir l'image.",
       keyword: "meilleur piqué",
@@ -135,7 +137,7 @@ export const chapter1: Chapter = {
           message: "Au-delà de 3200 ISO, le bruit devient vraiment gênant sur ce capteur.",
         },
       ],
-      preview: { ambience: "blue-hour", subject: "mural", motion: { type: "none" } },
+      preview: { ambience: "blue-hour", subject: "mural", motion: { type: "none" }, photo: { background: "/photos/bg-blue-hour-mural.webp", credits: ["bg-blue-hour-mural.webp"] } },
       explanation:
         "À f/{maxAperture}, c'est jouable : la {stabilization} aide, et s'appuyer contre un mur ou un poteau stabilise encore plus. Monte l'ISO juste ce qu'il faut.",
       keyword: "s'appuyer contre un mur",
@@ -169,8 +171,7 @@ export const chapter1: Chapter = {
       preview: {
         ambience: "night",
         subject: "cars",
-        motion: { type: "subject", freezeAt: 1 / 250, direction: "horizontal" },
-      },
+        motion: { type: "subject", freezeAt: 1 / 250, direction: "horizontal", angle: 60 }, photo: { background: "/photos/bg-night-intersection.webp", subject: { src: "/photos/lights-night-intersection.webp", placement: { kind: "fill" } }, credits: ["bg-night-intersection.webp", "lights-night-intersection.webp"] } },
       explanation:
         "Pose longue sur support stable, ISO au plus bas pour éviter le bruit, diaphragme fermé pour obtenir les étoiles sur les lampadaires. Les voitures disparaissent, seuls leurs phares restent.",
       keyword: "Pose longue sur support stable",
@@ -185,7 +186,7 @@ export const chapter1: Chapter = {
       exposureBias: -1,
       support: "handheld",
       constraints: [],
-      preview: { ambience: "dusk", subject: "silhouette", motion: { type: "none" } },
+      preview: { ambience: "dusk", subject: "silhouette", motion: { type: "none" }, photo: { background: "/photos/bg-dusk-sky-seawall.webp", subject: { src: "/photos/subject-standing-person.webp", placement: { kind: "box", centerX: 0.72, bottom: 1, height: 0.6 }, silhouette: true }, credits: ["bg-dusk-sky-seawall.webp", "subject-standing-person.webp"] } },
       explanation:
         "On expose pour le ciel, pas pour la personne : il faut sous-exposer d'environ 1 stop par rapport à la mesure moyenne. Le sujet reste noir, c'est le parti pris.",
       keyword: "sous-exposer d'environ 1 stop",
@@ -214,8 +215,7 @@ export const chapter1: Chapter = {
       preview: {
         ambience: "indoor",
         subject: "child",
-        motion: { type: "subject", freezeAt: 1 / 125, direction: "horizontal" },
-      },
+        motion: { type: "subject", freezeAt: 1 / 125, direction: "horizontal" }, photo: { background: "/photos/bg-living-room-lamp.webp", subject: { src: "/photos/subject-child.webp", placement: { kind: "box", centerX: 0.55, bottom: 0.98, height: 0.48 } }, credits: ["bg-living-room-lamp.webp", "subject-child.webp"] } },
       explanation:
         "Vitesse et ouverture sont imposées par l'intention, donc c'est l'ISO qui s'ajuste. Une photo bruitée mais nette vaut mieux qu'une photo propre et floue.",
       keyword: "bruitée mais nette",
@@ -243,8 +243,7 @@ export const chapter1: Chapter = {
       preview: {
         ambience: "overcast",
         subject: "waterfall",
-        motion: { type: "subject", freezeAt: 1 / 500, direction: "vertical" },
-      },
+        motion: { type: "subject", freezeAt: 1 / 500, direction: "vertical", angle: 70 }, photo: { background: "/photos/bg-forest-waterfall.webp", subject: { src: "/photos/water-forest-waterfall.webp", placement: { kind: "fill" } }, credits: ["bg-forest-waterfall.webp", "water-forest-waterfall.webp"] } },
       explanation:
         "Pour allonger la pose en plein jour, on ferme au maximum et on reste à l'ISO minimal. À f/22 la diffraction adoucit un peu l'image : en pratique, un filtre ND permettrait de rester vers f/11.",
       keyword: "filtre ND",
@@ -272,8 +271,7 @@ export const chapter1: Chapter = {
       preview: {
         ambience: "overcast",
         subject: "player",
-        motion: { type: "subject", freezeAt: 1 / 500, direction: "horizontal" },
-      },
+        motion: { type: "subject", freezeAt: 1 / 500, direction: "horizontal" }, photo: { background: "/photos/bg-football-field-overcast.webp", subject: { src: "/photos/subject-player.webp", placement: { kind: "box", centerX: 0.5, bottom: 0.95, height: 0.55 } }, credits: ["bg-football-field-overcast.webp", "subject-player.webp"] } },
       explanation:
         "Le ciel couvert coûte trois stops par rapport au plein soleil. À 55 mm le zoom n'ouvre qu'à f/{maxAperture} : pour tenir 1/500 s, il faut monter l'ISO vers 400. Pense aussi à l'AF-C et à la rafale.",
       keyword: "monter l'ISO vers 400",
@@ -299,7 +297,7 @@ export const chapter1: Chapter = {
           message: "En plein soleil, l'ISO doit rester au minimum.",
         },
       ],
-      preview: { ambience: "daylight", subject: "portrait", motion: { type: "none" } },
+      preview: { ambience: "daylight", subject: "portrait", motion: { type: "none" }, photo: { background: "/photos/bg-sunny-foliage-wall.webp", subject: { src: "/photos/subject-portrait.webp", placement: { kind: "box", centerX: 0.5, bottom: 1, height: 0.8 } }, credits: ["bg-sunny-foliage-wall.webp", "subject-portrait.webp"] } },
       explanation:
         "À f/1,8 en plein soleil, il faudrait environ 1/10 000 s, mais le boîtier plafonne à {maxShutter}. On ferme donc vers f/2,8 pour rester dans ses limites, ou on visse un filtre ND.",
       keyword: "plafonne à {maxShutter}",
@@ -333,8 +331,7 @@ export const chapter1: Chapter = {
       preview: {
         ambience: "night",
         subject: "walker",
-        motion: { type: "subject", freezeAt: 1 / 125, direction: "horizontal" },
-      },
+        motion: { type: "subject", freezeAt: 1 / 125, direction: "horizontal" }, photo: { background: "/photos/bg-night-shopping-street.webp", subject: { src: "/photos/subject-walkers.webp", placement: { kind: "box", centerX: 0.42, bottom: 0.97, height: 0.55 } }, credits: ["bg-night-shopping-street.webp", "subject-walkers.webp"] } },
       explanation:
         "En photo de rue, la profondeur de champ est une sécurité. Vitesse et ouverture sont fixées par l'intention : l'ISO monte vers 3200, et c'est un choix assumé.",
       keyword: "l'ISO monte vers 3200",
@@ -359,7 +356,7 @@ export const chapter1: Chapter = {
           message: "Le sujet est immobile : garde l'ISO sous 800 et profite de la vitesse lente.",
         },
       ],
-      preview: { ambience: "indoor", subject: "statue", motion: { type: "none" } },
+      preview: { ambience: "indoor", subject: "statue", motion: { type: "none" }, photo: { background: "/photos/bg-museum-hall.webp", subject: { src: "/photos/subject-statue.webp", placement: { kind: "box", centerX: 0.5, bottom: 0.95, height: 0.62 } }, credits: ["bg-museum-hall.webp", "subject-statue.webp"] } },
       explanation:
         "Pour un sujet immobile, la {stabilization} fait gagner environ 3 stops : là où il faudrait 1/30 s sans elle, 1/8 s passe. Elle compense tes mains, pas les mouvements du sujet.",
       keyword: "pas les mouvements du sujet",
@@ -378,18 +375,21 @@ export const chapter1: Chapter = {
   vocabulary: [
     {
       id: "aperture",
+      more: details.aperture,
       term: "Ouverture (diaphragme)",
       definition: "Taille du trou qui laisse passer la lumière, notée f/. Petit chiffre = grande ouverture.",
       pitfall: "Beaucoup croient que f/22 est « plus ouvert » que f/2,8. C'est l'inverse.",
     },
     {
       id: "shutter-speed",
+      more: details.shutter,
       term: "Vitesse d'obturation",
       definition: "Durée pendant laquelle l'obturateur reste ouvert.",
       pitfall: "1/30 est plus lent que 1/250 : c'est une fraction de seconde.",
     },
     {
       id: "iso",
+      more: details.iso,
       term: "ISO (sensibilité)",
       definition:
         "Amplification du signal du capteur. Monter l'ISO permet de photographier dans le noir mais ajoute du bruit.",
@@ -397,21 +397,25 @@ export const chapter1: Chapter = {
     },
     {
       id: "exposure-triangle",
+      more: details.triangle,
       term: "Triangle d'exposition",
       definition: "Ouverture, vitesse et ISO, liés entre eux : bouger l'un oblige à compenser sur les autres.",
     },
     {
       id: "stop",
+      more: details.stop,
       term: "Stop (ou IL)",
       definition: "Unité qui double ou divise par deux la quantité de lumière.",
     },
     {
       id: "depth-of-field",
+      more: details.depthOfField,
       term: "Profondeur de champ",
       definition: "Étendue de la zone nette dans la photo.",
     },
     {
       id: "bokeh",
+      more: details.bokeh,
       term: "Bokeh",
       definition: "Qualité esthétique du flou d'arrière-plan, la façon dont les points lumineux se dessinent.",
       pitfall:
@@ -419,22 +423,26 @@ export const chapter1: Chapter = {
     },
     {
       id: "matrix-metering",
+      more: details.metering,
       term: "Mesure matricielle",
       definition: "Mesure de la lumière sur toute l'image, moyennée.",
     },
     {
       id: "center-weighted",
+      more: details.metering,
       term: "Mesure pondérée centrale",
       definition: "Mesure sur une zone centrale élargie.",
       pitfall: "Sur le D3500 elle n'est pas paramétrable, contrairement à ce que dit le support du club.",
     },
     {
       id: "spot-metering",
+      more: details.metering,
       term: "Mesure spot (ponctuelle)",
       definition: "Mesure de la lumière sur un point précis.",
     },
     {
       id: "af-s",
+      more: details.autofocus,
       term: "AF-S",
       definition:
         "Autofocus ponctuel (« single ») : la mise au point se verrouille et ne bouge plus. Pour un sujet fixe.",
@@ -443,76 +451,90 @@ export const chapter1: Chapter = {
     },
     {
       id: "af-c",
+      more: details.autofocus,
       term: "AF-C",
       definition: "Autofocus continu : la mise au point suit un sujet mobile.",
     },
     {
       id: "af-a",
+      more: details.autofocus,
       term: "AF-A",
       definition: "Mode automatique qui bascule entre AF-S et AF-C selon que le sujet bouge.",
       pitfall: "Absent du support du club, mais c'est le réglage par défaut du D3500.",
     },
     {
       id: "af-p",
+      more: details.afMotor,
       term: "AF-P",
       definition: "Type de moteur d'objectif (moteur pas à pas, silencieux et rapide).",
       pitfall: "Ce n'est pas un mode de mise au point, malgré la ressemblance avec AF-S et AF-C. Sigle piégeux.",
     },
     {
       id: "vr",
+      more: details.stabilization,
       term: "VR",
       definition: "Réduction de vibration, la stabilisation optique. Gagne environ 3 stops.",
     },
     {
       id: "exposure-compensation",
+      more: details.compensation,
       term: "Correction d'exposition",
       definition: "Réglage qui éclaircit ou assombrit l'image par rapport au calcul de l'appareil.",
       pitfall: "Elle reste mémorisée même après extinction du boîtier.",
     },
     {
       id: "panning",
+      more: details.panning,
       term: "Filé",
       definition: "Technique où l'on suit un sujet mobile à vitesse lente : sujet net, fond flou horizontal.",
     },
     {
       id: "aps-c",
+      more: details.sensor,
       term: "APS-C",
       definition: "Format de capteur environ 1,5 fois plus petit que le plein format 24x36.",
     },
     {
       id: "focal-length",
+      more: details.focalLength,
       term: "Focale",
       definition: "Distance en mm qui détermine l'angle de champ. 18 mm = grand angle, 55 mm = plus serré.",
     },
     {
       id: "weather-sealed",
+      more: details.weatherSealed,
       term: "Tropicalisé",
       definition: "Objectif ou boîtier protégé contre la poussière et les projections d'eau.",
     },
     {
       id: "mode-auto",
+      more: details.exposureModes,
       term: "Mode AUTO (vert)",
       definition:
         "L'appareil choisit tout, et verrouille le flash, la balance des blancs et la correction d'exposition.",
     },
     {
       id: "mode-p",
+      more: details.exposureModes,
       term: "Mode P (auto programmé)",
       definition:
         "L'appareil choisit le couple vitesse/ouverture, décalable à la molette. Le photographe garde la correction d'exposition, le flash, l'ISO.",
     },
     {
       id: "mode-s",
+      more: details.exposureModes,
       term: "Mode S (priorité vitesse)",
       definition: "Le photographe choisit la vitesse, l'appareil choisit l'ouverture.",
     },
     {
       id: "mode-a",
+      more: details.exposureModes,
       term: "Mode A (priorité ouverture)",
       definition: "Le photographe choisit l'ouverture, l'appareil choisit la vitesse.",
     },
     {
       id: "mode-m",
+      more: details.exposureModes,
       term: "Mode M (manuel)",
       definition: "Le photographe choisit tout, l'appareil ne choisit rien.",
     },
@@ -521,6 +543,7 @@ export const chapter1: Chapter = {
   questions: [
     {
       id: "sqrt2",
+      more: details.aperture,
       prompt: "Entre deux ouvertures pleines (f/2 puis f/2,8), par quel coefficient multiplie-t-on le nombre f ?",
       answer: "1,41, c'est-à-dire racine de 2",
       distractors: ["1,44", "2", "1,5"],
@@ -530,6 +553,7 @@ export const chapter1: Chapter = {
     },
     {
       id: "bokeh-vs-dof",
+      more: details.bokeh,
       prompt: "Le bokeh et la profondeur de champ, c'est la même chose ?",
       answer: "Non : le bokeh est la qualité du flou, la profondeur de champ l'étendue de la zone nette",
       distractors: [
@@ -543,6 +567,7 @@ export const chapter1: Chapter = {
     },
     {
       id: "af-s-not-spot",
+      more: details.autofocus,
       prompt: "Le support du club écrit « AF-S : SPOT ». Que signifie vraiment AF-S ?",
       answer: "Autofocus ponctuel : le point se verrouille une fois trouvé",
       distractors: [
@@ -556,6 +581,7 @@ export const chapter1: Chapter = {
     },
     {
       id: "moving-subject-mode",
+      more: details.exposureModes,
       prompt: "Sujet en mouvement : quel mode d'exposition choisir en priorité ?",
       answer: "S, priorité vitesse",
       distractors: ["A, priorité ouverture", "AUTO", "P, auto programmé"],
@@ -564,6 +590,7 @@ export const chapter1: Chapter = {
     },
     {
       id: "portrait-mode",
+      more: details.exposureModes,
       prompt: "Portrait ou paysage, quand on veut gérer la profondeur de champ : quel mode ?",
       answer: "A, priorité ouverture",
       distractors: ["S, priorité vitesse", "AUTO", "GUIDE"],
@@ -572,6 +599,7 @@ export const chapter1: Chapter = {
     },
     {
       id: "studio-mode",
+      more: details.exposureModes,
       prompt: "En studio avec des flashs, quel mode d'exposition ?",
       answer: "M, manuel",
       distractors: ["A, priorité ouverture", "P, auto programmé", "AUTO"],
@@ -581,6 +609,7 @@ export const chapter1: Chapter = {
     },
     {
       id: "auto-locks",
+      more: details.exposureModes,
       prompt: "En mode AUTO (vert), que peut-on régler soi-même ?",
       answer: "Rien : flash, balance des blancs et correction d'exposition sont verrouillés",
       distractors: [
@@ -593,6 +622,7 @@ export const chapter1: Chapter = {
     },
     {
       id: "forget-p",
+      more: details.exposureModes,
       prompt: "Le support du club conseille d'« oublier » le mode P. Qu'en penser ?",
       answer: "C'est une position pédagogique : P reste utile pour réagir vite en gardant la correction d'exposition",
       distractors: [
@@ -606,6 +636,7 @@ export const chapter1: Chapter = {
     },
     {
       id: "s-mode-aperture",
+      more: details.exposureModes,
       prompt: "En mode S, qui choisit l'ouverture ?",
       answer: "L'appareil",
       distractors: ["Le photographe, à la molette", "Personne, elle reste à f/5,6", "Le photographe, avec +/-"],
@@ -614,6 +645,7 @@ export const chapter1: Chapter = {
     },
     {
       id: "which-wider",
+      more: details.aperture,
       prompt: "Quelle ouverture laisse passer le plus de lumière ?",
       answer: "f/2,8",
       distractors: ["f/22", "f/8", "f/11"],
@@ -623,6 +655,7 @@ export const chapter1: Chapter = {
     },
     {
       id: "which-slower",
+      more: details.shutter,
       prompt: "Quelle vitesse est la plus lente ?",
       answer: "1/30 s",
       distractors: ["1/250 s", "1/125 s", "1/1000 s"],
@@ -631,6 +664,7 @@ export const chapter1: Chapter = {
     },
     {
       id: "iso-role",
+      more: details.iso,
       prompt: "Quel est le bon réflexe avec l'ISO ?",
       answer: "Le régler en dernier, comme variable d'ajustement",
       distractors: [
@@ -644,7 +678,8 @@ export const chapter1: Chapter = {
     },
     {
       id: "compensation-memory",
-      prompt: "Tu as appliqué -1 de correction d'exposition hier soir. Ce matin, après avoir rallumé le boîtier :",
+      more: details.compensation,
+      prompt: "En mode A, tu as appliqué -1 de correction d'exposition hier soir. Ce matin, après avoir rallumé le boîtier :",
       answer: "La correction est toujours à -1",
       distractors: [
         "Elle est revenue à 0 à l'extinction",
@@ -657,6 +692,7 @@ export const chapter1: Chapter = {
     },
     {
       id: "af-p-meaning",
+      more: details.afMotor,
       prompt: "Sur l'objectif, « AF-P » désigne :",
       answer: "Un type de moteur autofocus, pas à pas et silencieux",
       distractors: [

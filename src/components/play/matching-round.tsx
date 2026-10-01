@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { MatchingRound } from "@/types";
 import { EASE_OUT, SHAKE } from "../motion-tokens";
-import { ExplanationPanel } from "./explanation-panel";
+import { ExplanationPanel, LearnMore } from "./explanation-panel";
 
 interface Line {
   id: string;
@@ -86,7 +86,6 @@ export function MatchingRoundView({
 
   const done = matched.length === round.pairs.length;
   const definitions = round.definitionOrder.map((id) => round.pairs.find((p) => p.id === id)!);
-  const pitfalls = round.pairs.filter((p) => p.pitfall);
 
   const item = (side: Side, id: string, text: string) => {
     const key = `${side}:${id}`;
@@ -165,16 +164,16 @@ export function MatchingRoundView({
                 : `Toutes les paires sont reliées, avec ${errors} erreur${errors > 1 ? "s" : ""} en route.`,
           }}
         >
-          {pitfalls.length > 0 && (
-            <ul className="flex flex-col gap-2">
-              {pitfalls.map((p) => (
-                <li key={p.id} className="rounded-xl bg-surface-2 p-3 text-fluid-sm leading-relaxed">
-                  <span className="font-semibold text-accent">{p.term} : </span>
-                  {p.pitfall}
-                </li>
-              ))}
-            </ul>
-          )}
+          <ul className="flex flex-col gap-2">
+            {round.pairs.map((p) => (
+              <li key={p.id} className="rounded-xl bg-surface-2 p-3 text-fluid-sm leading-relaxed">
+                <span className="font-semibold text-accent">{p.term} : </span>
+                {p.definition}
+                {p.pitfall && <span className="mt-1 block text-text/80">Piège : {p.pitfall}</span>}
+                {p.more && <LearnMore more={p.more} title={p.term} />}
+              </li>
+            ))}
+          </ul>
         </ExplanationPanel>
       )}
     </div>

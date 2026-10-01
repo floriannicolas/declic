@@ -11,10 +11,27 @@ const EXPOSURE_TONE = {
   under: "border-bad/60 bg-bad-soft",
 } as const;
 
-export function ResultPanel({ result, settings, example }: { result: ScenarioResult; settings: string; example: string | null }) {
+export function ResultPanel({
+  result,
+  settings,
+  example,
+  practice,
+  onRetry,
+  onTryExample,
+}: {
+  result: ScenarioResult;
+  settings: string;
+  example: string | null;
+  practice: boolean;
+  onRetry?: () => void;
+  onTryExample?: () => void;
+}) {
   const { exposure, constraints } = result;
   return (
     <ExplanationPanel outcome={result.outcome} explanation={{ text: result.explanation, keyword: result.keyword }}>
+      {practice && (
+        <p className="self-start rounded-full border border-line px-3 py-1 text-fluid-xs text-muted">Entraînement, sans points : seul le premier essai compte.</p>
+      )}
       <p className="tabular text-fluid-sm text-muted">Tes réglages : {settings}</p>
       <ul className="flex flex-col gap-2">
         <Row index={0} ok={exposure.verdict === "correct"} tone={EXPOSURE_TONE[exposure.verdict]} title="Exposition" text={exposure.label} />
@@ -34,6 +51,30 @@ export function ResultPanel({ result, settings, example }: { result: ScenarioRes
           <span className="font-semibold text-accent">Exemple de réglage juste, proche du tien : </span>
           {example}
         </p>
+      )}
+      {(onRetry || onTryExample) && (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {onTryExample && (
+            <motion.button
+              type="button"
+              onClick={onTryExample}
+              whileTap={{ scale: 0.97 }}
+              className="min-h-12 rounded-full border border-accent bg-accent-soft px-5 text-fluid-sm font-semibold text-accent"
+            >
+              Essayer le réglage juste
+            </motion.button>
+          )}
+          {onRetry && (
+            <motion.button
+              type="button"
+              onClick={onRetry}
+              whileTap={{ scale: 0.97 }}
+              className="min-h-12 rounded-full border border-line px-5 text-fluid-sm font-semibold"
+            >
+              Réessayer avec mes réglages
+            </motion.button>
+          )}
+        </div>
       )}
     </ExplanationPanel>
   );

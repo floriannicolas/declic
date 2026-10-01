@@ -14,6 +14,7 @@ import { applyOutcome, initialScore, multiplier } from "./scoring";
 import { shutterSeconds } from "./shutter";
 import { evaluateScenario, findSolution, setupSimulator, type SettingIndices } from "./simulator";
 import { generateStopsQuestion } from "./stops";
+import { createSession } from "./rounds";
 
 const seeded = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 
@@ -95,7 +96,7 @@ describe("simulateur, scénarios du chapitre 1", () => {
     ["golf-swing", "1/1000", 5.6, 200],
     ["portrait-blur", "1/250", 2.8, 100],
     ["city-landscape", "1/500", 8, 100],
-    ["blue-hour-mural", "1/30", 3.5, 125],
+    ["blue-hour-mural", "1/40", 3.5, 200],
     ["light-trails", "1 s", 8, 100],
     ["dusk-silhouette", "1/15", 8, 100],
     ["indoor-child", "1/125", 2, 400],
@@ -189,5 +190,22 @@ describe("indépendance vis-à-vis du boîtier", () => {
     expect(setup.scales.iso.limitMessage("high")).toContain("R8");
     expect(setup.scales.aperture.values[setup.scales.aperture.max]).toBe(32);
     expect(() => validateContent(chapters, [fullFrame])).not.toThrow();
+  });
+});
+
+describe("sessions", () => {
+  it("passe chaque notion du vocabulaire exactement une fois", () => {
+    const session = createSession("vocabulary", chapter1, d3500, seeded(3));
+    const ids = session.rounds.flatMap((r) => (r.kind === "matching" ? r.round.pairs.map((p) => `term:${p.id}`) : [r.question.id]));
+    expect(ids.length).toBe(chapter1.vocabulary.length + chapter1.questions.length);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(session.total).toBe(ids.length);
+    expect(session.rounds.some((r) => r.kind === "matching")).toBe(true);
+  });
+
+  it("borne les autres modes à leur pool", () => {
+    expect(createSession("diagnosis", chapter1, d3500).total).toBe(chapter1.diagnoses.length);
+    expect(createSession("camera", chapter1, d3500).total).toBe(d3500.questions.length);
+    expect(createSession("stops", chapter1, d3500).total).toBe(15);
   });
 });
