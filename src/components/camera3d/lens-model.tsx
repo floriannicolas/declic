@@ -27,7 +27,20 @@ export interface LensState {
  * Retractable kit zoom, built along +z from the mount face. The rear barrel is
  * fixed, the front barrel slides out when the zoom ring is turned.
  */
-export function LensModel({ m, state, name, focals }: { m: Materials; state: LensState; name: string; focals: readonly number[] }) {
+export function LensModel({
+  m,
+  state,
+  name,
+  focals,
+  inscriptions,
+}: {
+  m: Materials;
+  state: LensState;
+  name: string;
+  focals: readonly number[];
+  /** Text printed around the front element. */
+  inscriptions: readonly { text: string; at: number }[];
+}) {
   const geometry = useMemo(
     () => ({
       rear: lathe([
@@ -52,8 +65,8 @@ export function LensModel({ m, state, name, focals }: { m: Materials; state: Len
     [],
   );
   const textures = useMemo(
-    () => ({ name: flipX(ringText(name)), scale: flipX(focalScale(focals)), band: flipX(lensBand(name, "DX VR")) }),
-    [name, focals],
+    () => ({ name: flipX(ringText(inscriptions)), scale: flipX(focalScale(focals)), band: flipX(lensBand(name, "DX VR")) }),
+    [name, focals, inscriptions],
   );
   useEffect(() => () => Object.values(textures).forEach((t) => t.dispose()), [textures]);
 
@@ -95,9 +108,9 @@ export function LensModel({ m, state, name, focals }: { m: Materials; state: Len
             <cylinderGeometry args={[0.314, 0.314, 0.05, 96, 1, true]} />
           </mesh>
         </Animated>
-        {/* Thin silver ring at the front, as on the kit lens */}
-        <mesh position={[0, 0, 0.297]} material={m.metal}>
-          <torusGeometry args={[0.305, 0.0025, 8, 128]} />
+        {/* Thin silver ring just behind the focus ring, as on the kit lens */}
+        <mesh position={[0, 0, 0.215]} material={m.chrome}>
+          <torusGeometry args={[0.303, 0.0028, 8, 128]} />
         </mesh>
         {/* Name ring around the front element */}
         <mesh position={[0, 0, 0.296]}>
@@ -108,7 +121,11 @@ export function LensModel({ m, state, name, focals }: { m: Materials; state: Len
         <mesh position={[0, 0, 0.29 - 0.45]} rotation={[Math.PI / 2, 0, 0]} material={m.coatedGlass}>
           <sphereGeometry args={[0.45, 96, 24, 0, Math.PI * 2, 0, Math.asin(0.2 / 0.45)]} />
         </mesh>
-        <mesh position={[0, 0, 0.244]} material={m.glassDark}>
+        {/* Inner elements deep in the barrel, catching warm reflections */}
+        <mesh position={[0, 0, 0.2 - 0.22]} rotation={[Math.PI / 2, 0, 0]} material={m.innerGlass}>
+          <sphereGeometry args={[0.22, 64, 16, 0, Math.PI * 2, 0, Math.asin(0.09 / 0.22)]} />
+        </mesh>
+        <mesh position={[0, 0, 0.19]} material={m.glassDark}>
           <circleGeometry args={[0.2, 64]} />
         </mesh>
       </Animated>
