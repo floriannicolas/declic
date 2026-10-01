@@ -125,3 +125,30 @@ mark {
 @media (prefers-reduced-motion: reduce) {
   .loader-iris, .loader-blade, .loader-pupil { animation-duration: 0s; animation-iteration-count: 1; }
 }
+
+/*
+ * Logo "click", once every 12 s: the action fills the first ~0.8 s, then the
+ * logo rests, so it never reads as a loading spinner.
+ */
+@keyframes logo-twist {
+  0% { transform: rotate(0deg); animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.4); }
+  3% { transform: rotate(42deg); animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1); }
+  6%, 100% { transform: rotate(0deg); }
+}
+@keyframes logo-shut {
+  0% { transform: scale(1); animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.4); }
+  3% { transform: scale(0.04); animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1); }
+  6%, 100% { transform: scale(1); }
+}
+@keyframes logo-glint {
+  0%, 5% { transform: scale(0) rotate(0deg); opacity: 0; }
+  6.5% { transform: scale(1.15) rotate(45deg); opacity: 1; }
+  9%, 100% { transform: scale(0) rotate(90deg); opacity: 0; }
+}
+.logo-animated .logo-iris { animation: logo-twist 12s 1.2s infinite; transform-box: view-box; transform-origin: 32px 32px; }
+.logo-animated .logo-hole { animation: logo-shut 12s 1.2s infinite; transform-box: view-box; transform-origin: 32px 32px; }
+.logo-animated .logo-glint { animation: logo-glint 12s 1.2s infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-animated .logo-iris, .logo-animated .logo-hole, .logo-animated .logo-glint { animation: none; }
+}

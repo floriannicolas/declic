@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { chapters } from "@/data/chapters";
 import { photoCredits } from "@/data/photo-credits";
 import { useCamera } from "@/progress/use-progress";
+import { Logo } from "../brand/logo";
 import { micro } from "../motion-tokens";
 
 export function HomeScreen({ onOpen, onCamera3d }: { onOpen: (chapterId: string) => void; onCamera3d: () => void }) {
@@ -13,7 +14,10 @@ export function HomeScreen({ onOpen, onCamera3d }: { onOpen: (chapterId: string)
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-[max(1rem,var(--safe-left))] pt-[calc(var(--safe-top)+2.5rem)] pb-[calc(var(--safe-bottom)+2rem)]">
       <header className="flex flex-col gap-2">
         <p className="text-fluid-xs font-medium uppercase tracking-[0.2em] text-accent">Club photo</p>
-        <h1 className="text-fluid-2xl font-semibold tracking-tight">Déclic</h1>
+        <h1 className="flex items-center gap-3 text-fluid-2xl font-semibold tracking-tight">
+          <Logo size={52} animated title="" />
+          Déclic
+        </h1>
         <p className="max-w-prose text-fluid-base text-muted">
           Révise les cours chapitre par chapitre, avec ton {camera.brand} {camera.model} en main.
         </p>

@@ -1,11 +1,15 @@
 /**
- * The D3500 body as a signed distance field: rounded volumes merged with smooth
- * unions, so the grip flows into the shell like a moulded part. A surface nets
- * pass turns the field into one smooth mesh. Pure math, no three.js import.
+ * The D3500 body as a signed distance field. Its volume is carved from three
+ * outlines traced from Nikon's orthographic renders (see body-outlines): the
+ * intersection of their extrusions, with rounded edges, is the moulded shell.
+ * The lens mount boss is added on top, and the pop up flash lid is cut from the
+ * same field. A surface nets pass turns the field into one smooth mesh. Pure
+ * math, no three.js import.
  *
  * Coordinates are the photographer's: x to the right (grip side), y up,
  * z forward, in decimetres.
  */
+import { FRONT_OUTLINE, SIDE_OUTLINE, TOP_OUTLINE } from "./body-outlines";
 
 export type V3 = [number, number, number];
 
@@ -19,111 +23,180 @@ export function smin(a: number, b: number, k: number) {
 }
 const smax = (a: number, b: number, k: number) => -smin(-a, -b, k);
 
-function roundBox(px: number, py: number, pz: number, c: V3, h: V3, r: number) {
-  const qx = Math.abs(px - c[0]) - h[0] + r;
-  const qy = Math.abs(py - c[1]) - h[1] + r;
-  const qz = Math.abs(pz - c[2]) - h[2] + r;
-  return length3(Math.max(qx, 0), Math.max(qy, 0), Math.max(qz, 0)) + Math.min(Math.max(qx, Math.max(qy, qz)), 0) - r;
+/** Body frame of the outlines (millimetres) to model units (decimetres). */
+export const MM = 0.01;
+/** Where the outline origin (centre of the base, at the mount face) sits in the model. */
+export const ORIGIN: V3 = [0, -0.47, 0.2];
+/** Model position of a point given in the outlines' millimetres. */
+export const fromMm = (x: number, y: number, z: number): V3 => [ORIGIN[0] + x * MM, ORIGIN[1] + y * MM, ORIGIN[2] + z * MM];
+
+/** Lens mount axis, in millimetres from the outline origin. */
+export const MOUNT_MM = { x: -16.7, y: 39 };
+
+/**
+ * Signed distance to a closed outline, precomputed on a grid (0.5 mm) and
+ * sampled bilinearly: thousands of times cheaper than walking the polygon for
+ * each of the million samples of the body.
+ */
+class OutlineField {
+  private readonly values: Float32Array;
+  private readonly x0: number;
+  private readonly y0: number;
+  private readonly nx: number;
+  private readonly ny: number;
+  private static readonly CELL = 0.5;
+  private static readonly MARGIN = 14;
+
+  constructor(points: readonly (readonly [number, number])[]) {
+    const xs = points.map((p) => p[0]);
+    const ys = points.map((p) => p[1]);
+    const { CELL, MARGIN } = OutlineField;
+    this.x0 = Math.min(...xs) - MARGIN;
+    this.y0 = Math.min(...ys) - MARGIN;
+    this.nx = Math.ceil((Math.max(...xs) + MARGIN - this.x0) / CELL) + 1;
+    this.ny = Math.ceil((Math.max(...ys) + MARGIN - this.y0) / CELL) + 1;
+    this.values = new Float32Array(this.nx * this.ny);
+    for (let j = 0; j < this.ny; j++)
+      for (let i = 0; i < this.nx; i++) this.values[i + this.nx * j] = polygonDistance(points, this.x0 + i * CELL, this.y0 + j * CELL);
+  }
+
+  /** Distance in millimetres, negative inside. Beyond the grid, a lower bound. */
+  at(x: number, y: number) {
+    const { CELL } = OutlineField;
+    const fx = clamp((x - this.x0) / CELL, 0, this.nx - 1.001);
+    const fy = clamp((y - this.y0) / CELL, 0, this.ny - 1.001);
+    const i = Math.floor(fx);
+    const j = Math.floor(fy);
+    const tx = fx - i;
+    const ty = fy - j;
+    const v = this.values;
+    const k = i + this.nx * j;
+    const inner = (v[k] * (1 - tx) + v[k + 1] * tx) * (1 - ty) + (v[k + this.nx] * (1 - tx) + v[k + this.nx + 1] * tx) * ty;
+    const outside = Math.hypot(Math.max(this.x0 - x, x - (this.x0 + (this.nx - 1) * CELL), 0), Math.max(this.y0 - y, y - (this.y0 + (this.ny - 1) * CELL), 0));
+    return inner + outside;
+  }
 }
 
-/** Signed distance to a plane through `at` with unit normal `n`: positive on the normal side. */
-function plane(px: number, py: number, pz: number, n: V3, at: V3) {
-  const l = length3(...n);
-  return ((px - at[0]) * n[0] + (py - at[1]) * n[1] + (pz - at[2]) * n[2]) / l;
+/** Exact signed distance to a polygon (even odd rule for the sign). */
+function polygonDistance(points: readonly (readonly [number, number])[], px: number, py: number) {
+  // Squared distances in the loop, one square root at the end: this runs millions of times.
+  let best = Infinity;
+  let inside = false;
+  for (let a = 0, b = points.length - 1; a < points.length; b = a++) {
+    const ax = points[a][0];
+    const ay = points[a][1];
+    const bx = points[b][0];
+    const by = points[b][1];
+    const ex = bx - ax;
+    const ey = by - ay;
+    const wx = px - ax;
+    const wy = py - ay;
+    const t = clamp((wx * ex + wy * ey) / (ex * ex + ey * ey || 1), 0, 1);
+    const dx = wx - ex * t;
+    const dy = wy - ey * t;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < best) best = d2;
+    if (ay > py !== by > py && px < (ex * wy) / ey + ax) inside = !inside;
+  }
+  return inside ? -Math.sqrt(best) : Math.sqrt(best);
 }
 
-/** Cylinder of finite length along z. */
-function cylinderZ(px: number, py: number, pz: number, cx: number, cy: number, r: number, z0: number, z1: number) {
-  const d = Math.hypot(px - cx, py - cy) - r;
-  const h = Math.abs(pz - (z0 + z1) / 2) - (z1 - z0) / 2;
-  return Math.min(Math.max(d, h), 0) + length3(Math.max(d, 0), Math.max(h, 0), 0);
+let outlines: { front: OutlineField; side: OutlineField; top: OutlineField } | null = null;
+/** Built on first use, so importing the module (for the layout) stays cheap. */
+function fields() {
+  outlines ??= { front: new OutlineField(FRONT_OUTLINE), side: new OutlineField(SIDE_OUTLINE), top: new OutlineField(TOP_OUTLINE) };
+  return outlines;
 }
 
-function gripField(x: number, y: number, z: number) {
-  // Only the front bulge: the back of that side belongs to the flat shell.
-  let g = roundBox(x, y, z, [0.465, -0.09, 0.15], [0.155, 0.375, 0.255], 0.14);
-  // The top slopes towards the front, where the shutter release sits.
-  g = smax(g, plane(x, y, z, [0, 1, 0.3], [0.46, 0.28, 0.05]), 0.05);
-  // Finger channel between the grip and the lens.
-  g = smax(g, -(Math.hypot(x - 0.3, z - 0.47) - 0.1), 0.06);
-  return g;
+/** Round edged intersection of the three extruded outlines, in millimetres. */
+function hullMm(x: number, y: number, z: number) {
+  const f = fields();
+  // Generous radii on the body and the grip, crisper ones on the prism and its hood.
+  const body = clamp((78 - y) / 8, 0, 1);
+  const grip = clamp((x - 22) / 18, 0, 1) * clamp((68 - y) / 8, 0, 1);
+  const r = 4.5 + 2.5 * body + 7 * grip;
+  const a = f.front.at(x, y) + r;
+  const b = f.side.at(z, y) + r;
+  const c = f.top.at(x, z) + r;
+  return length3(Math.max(a, 0), Math.max(b, 0), Math.max(c, 0)) + Math.min(Math.max(a, b, c), 0) - r;
 }
 
-function prismField(x: number, y: number, z: number) {
-  // Slightly narrower towards the top.
-  const taper = 1 - 0.1 * clamp((y - 0.25) / 0.25, 0, 1);
-  const sx = (x + 0.08) / taper - 0.08;
-  let p = roundBox(sx, y, z, [-0.08, 0.34, -0.06], [0.215, 0.13, 0.2], 0.05);
-  // Front face leaning back under the flash hood: this is where the logo plate sits.
-  p = smax(p, plane(sx, y, z, [0, 0.35, 1], [0, 0.32, 0.12]), 0.03);
-  p = smax(p, plane(sx, y, z, [0, 0.28, -1], [0, 0.4, -0.25]), 0.03);
-  return p;
+/** Cylinder of finite length along z, with rounded rims (millimetres). */
+function cylinderZ(x: number, y: number, z: number, cx: number, cy: number, r: number, z0: number, z1: number, round = 0) {
+  const d = Math.hypot(x - cx, y - cy) - r + round;
+  const h = Math.abs(z - (z0 + z1) / 2) - (z1 - z0) / 2 + round;
+  return Math.min(Math.max(d, h), 0) + Math.hypot(Math.max(d, 0), Math.max(h, 0)) - round;
+}
+
+/** Smooth bump: 1 in the middle of [a, b], easing to 0 at both ends. */
+function bump(v: number, a: number, b: number) {
+  const t = clamp((v - a) / (b - a), 0, 1);
+  return 16 * t * t * (1 - t) * (1 - t);
+}
+
+/** Prism centre line and its half width at a given height: the sides lean inwards. */
+const PRISM_X = -16.5;
+const prismHalfWidth = (y: number) => 17 + (96 - y) * 0.48;
+
+/** The whole moulded body, flash lid included, in millimetres. */
+function solidMm(x: number, y: number, z: number) {
+  let d = hullMm(x, y, z);
+  // The grip front swells like a moulded handle, instead of a flat face.
+  d -= 3.6 * bump(x, 18, 66) * bump(y, -12, 72) * clamp((z + 30) / 16, 0, 1);
+  // Top of the grip sloping down towards the front, where the shutter release sits.
+  const gripTop = ((y - 73.5) + (z + 19) * 0.6) / 1.17;
+  d = smax(d, smin(gripTop, x - 22, 6), 5);
+  // Prism sides leaning inwards above the shoulders.
+  const prism = (Math.abs(x - PRISM_X) - prismHalfWidth(y)) * 0.9;
+  d = smax(d, smin(prism, y - 76.5, 3), 3.5);
+  // Raised boss around the lens mount, standing proud of the front face.
+  d = smin(d, cylinderZ(x, y, z, MOUNT_MM.x, MOUNT_MM.y, 33.8, -10, -1, 1.6), 2.5);
+  // Mount throat: the mirror box behind the bayonet.
+  d = Math.max(d, -cylinderZ(x, y, z, MOUNT_MM.x, MOUNT_MM.y, 22.5, -26, 5));
+  return d;
 }
 
 /**
- * Flash hood: the long, flat topped housing that juts forward over the lens,
- * overhanging the prism front. Its front face carries the flash window.
+ * Pop up flash lid: the top of the hood, in front of the hot shoe, above a
+ * parting line sloping down towards the back. The "Nikon" face under its front
+ * edge stays on the body. Negative inside, millimetres.
  */
-function hoodField(x: number, y: number, z: number) {
-  let h = roundBox(x, y, z, [-0.08, 0.435, 0.05], [0.205, 0.06, 0.195], 0.055);
-  // Top sloping down towards the front, with a soft front edge.
-  h = smax(h, plane(x, y, z, [0, 1, 0.3], [0, 0.485, 0.03]), 0.05);
-  // Front face leaning back a little.
-  h = smax(h, plane(x, y, z, [0, -0.25, 1], [0, 0.43, 0.225]), 0.02);
-  return h;
+function lidRegion(y: number, z: number) {
+  const parting = 86 + (z + 35) * 0.098;
+  return smax(parting - y, -35 - z, 1);
 }
 
-/**
- * Region of the prism that pops up as the built in flash: everything in front
- * of a line just ahead of the hot shoe and above a parting line that follows
- * the slope of the front face. Negative inside.
- */
-function flashRegion(x: number, y: number, z: number) {
-  const behind = -(z + 0.075);
-  // Parting line along the underside of the hood.
-  const above = -plane(x, y, z, [0, 1, 0.12], [0, 0.39, 0.1]);
-  return smax(behind, above, 0.02);
-}
+/** Width of the parting line around the flash, in millimetres. */
+const FLASH_GAP = 0.3;
 
-/** Width of the parting line around the flash. */
-const FLASH_GAP = 0.0025;
-
-function shellField(x: number, y: number, z: number) {
-  // Full width shell: the back is one flat surface across the body.
-  let body = roundBox(x, y, z, [-0.005, -0.095, -0.055], [0.605, 0.365, 0.245], 0.085);
-  // Left shoulder sloping down, as on the real body.
-  body = smax(body, plane(x, y, z, [-0.32, 1, 0], [-0.28, 0.27, 0]), 0.07);
-  // Raised shoulder carrying the mode dial.
-  body = smin(body, roundBox(x, y, z, [0.23, 0.265, -0.08], [0.13, 0.035, 0.135], 0.05), 0.04);
-  // Thumb rest at the back.
-  body = smin(body, roundBox(x, y, z, [0.48, 0.2, -0.29], [0.1, 0.07, 0.022], 0.02), 0.03);
-  // Lens mount flange.
-  body = smin(body, cylinderZ(x, y, z, -0.08, -0.06, 0.33, 0.15, 0.215), 0.02);
-  return { body, grip: gripField(x, y, z) };
-}
-
-/** The whole moulded body, flash included. */
-function solidDistance(x: number, y: number, z: number) {
-  const { body, grip } = shellField(x, y, z);
-  const withPrism = smin(smin(body, grip, 0.06), prismField(x, y, z), 0.045);
-  // Small blend only: the hood keeps a crisp overhang above the logo plate.
-  return smin(withPrism, hoodField(x, y, z), 0.015);
-}
+const toMm = (x: number, y: number, z: number): V3 => [(x - ORIGIN[0]) / MM, (y - ORIGIN[1]) / MM, (z - ORIGIN[2]) / MM];
 
 /** Whole body except the pop up flash, with a fine parting line around it. */
 export function bodyDistance(x: number, y: number, z: number) {
-  return Math.max(solidDistance(x, y, z), FLASH_GAP - flashRegion(x, y, z));
+  const [mx, my, mz] = toMm(x, y, z);
+  return Math.max(solidMm(mx, my, mz), FLASH_GAP - lidRegion(my, mz)) * MM;
 }
 
-/** The pop up flash, cut from the same field so it sits flush when closed. */
+/** The pop up flash lid, cut from the same field so it sits flush when closed. */
 export function flashDistance(x: number, y: number, z: number) {
-  return Math.max(solidDistance(x, y, z), flashRegion(x, y, z) + FLASH_GAP);
+  const [mx, my, mz] = toMm(x, y, z);
+  return Math.max(solidMm(mx, my, mz), lidRegion(my, mz) + FLASH_GAP) * MM;
 }
 
-/** True where the rubber covering applies: the grip, not the shell. */
+/** Thumb rest on the back, as seen from behind: [x, y] in millimetres. */
+const THUMB_REST: readonly (readonly [number, number])[] = [
+  [27, 61.6], [61, 61.6], [61, 36.6], [40.6, 37.1], [29.1, 52.7],
+];
+
+/** True where the leather like covering applies: the front and side of the grip, and the thumb rest. */
 export function isGrip(x: number, y: number, z: number) {
-  const { body, grip } = shellField(x, y, z);
-  return grip < body - 0.01 && z > -0.24;
+  const [mx, my, mz] = toMm(x, y, z);
+  if (mz < -53) return polygonDistance(THUMB_REST, mx, my) < 0;
+  // Under the red stripe, which rises towards the lens.
+  const top = 59.8 + (53 - mx) * 0.155;
+  // Inner edge along the finger channel, leaning towards the lens at the base.
+  const inner = 26.5 - (63 - my) * 0.2;
+  return mx > inner && my < top && my > 3 && mz > -31.5;
 }
 
 export interface MeshData {
@@ -145,7 +218,7 @@ const EDGES: [number, number][] = [
  * of its edge crossings, and one quad per grid edge crossing it. Smooth and
  * watertight, ideal for a moulded object. Normals come from the field gradient.
  */
-export function surfaceNets(sdf: (x: number, y: number, z: number) => number, min: V3, max: V3, step: number): MeshData {
+export function surfaceNets(sdf: (x: number, y: number, z: number) => number, min: V3, max: V3, step: number, normalSpan = 0): MeshData {
   const n = [0, 1, 2].map((a) => Math.ceil((max[a] - min[a]) / step) + 1) as V3;
   const [nx, ny, nz] = n;
   const values = new Float32Array(nx * ny * nz);
@@ -220,7 +293,8 @@ export function surfaceNets(sdf: (x: number, y: number, z: number) => number, mi
   const count = positions.length / 3;
   const normals = new Float32Array(count * 3);
   const uvs = new Float32Array(count * 2);
-  const e = step * 0.5;
+  // Wide enough to average out the outline grids, so reflections stay smooth.
+  const e = Math.max(step * 0.5, normalSpan);
   for (let v = 0; v < count; v++) {
     const [x, y, z] = [positions[v * 3], positions[v * 3 + 1], positions[v * 3 + 2]];
     let gx = sdf(x + e, y, z) - sdf(x - e, y, z);
@@ -249,7 +323,7 @@ export function hitBody(origin: V3, direction: V3, sdf = bodyDistance): { positi
   const l = length3(...direction);
   const d: V3 = [direction[0] / l, direction[1] / l, direction[2] / l];
   let t = 0;
-  for (let n = 0; n < 200 && t < 4; n++) {
+  for (let n = 0; n < 400 && t < 4; n++) {
     const p: V3 = [origin[0] + d[0] * t, origin[1] + d[1] * t, origin[2] + d[2] * t];
     const dist = sdf(...p);
     if (dist < 1e-4) {
@@ -262,14 +336,15 @@ export function hitBody(origin: V3, direction: V3, sdf = bodyDistance): { positi
       const gl = length3(...g) || 1;
       return { position: p, normal: [g[0] / gl, g[1] / gl, g[2] / gl] };
     }
-    t += Math.max(dist * 0.9, 1e-4);
+    // The outline hull may overestimate distances by up to sqrt(3) near its edges: step cautiously.
+    t += Math.max(dist * 0.55, 1e-4);
   }
   return null;
 }
 
 /** Sampling grids of the two meshes, shared by the worker and the fallback. */
-const BODY_GRID = { min: [-0.72, -0.58, -0.42] as V3, max: [0.76, 0.58, 0.52] as V3, step: 0.012 };
-const FLASH_GRID = { min: [-0.4, 0.3, -0.12] as V3, max: [0.25, 0.55, 0.3] as V3, step: 0.008 };
+const BODY_GRID = { min: [-0.66, -0.5, -0.44] as V3, max: [0.66, 0.52, 0.34] as V3, step: 0.009 };
+const FLASH_GRID = { min: [-0.42, 0.34, -0.19] as V3, max: [0.1, 0.52, 0.34] as V3, step: 0.006 };
 
 export interface BodyMeshes {
   /** Indices are ordered shell first, then rubber: `shellIndexCount` splits the two material groups. */
@@ -279,7 +354,7 @@ export interface BodyMeshes {
 
 /** The whole costly part of the 3D view (about half a second): run it in a worker. */
 export function buildBodyMeshes(): BodyMeshes {
-  const body = surfaceNets(bodyDistance, BODY_GRID.min, BODY_GRID.max, BODY_GRID.step);
+  const body = surfaceNets(bodyDistance, BODY_GRID.min, BODY_GRID.max, BODY_GRID.step, 0.012);
   const shell: number[] = [];
   const rubber: number[] = [];
   const p = body.positions;
@@ -292,6 +367,6 @@ export function buildBodyMeshes(): BodyMeshes {
   }
   return {
     body: { ...body, indices: new Uint32Array([...shell, ...rubber]), shellIndexCount: shell.length },
-    flash: surfaceNets(flashDistance, FLASH_GRID.min, FLASH_GRID.max, FLASH_GRID.step),
+    flash: surfaceNets(flashDistance, FLASH_GRID.min, FLASH_GRID.max, FLASH_GRID.step, 0.008),
   };
 }

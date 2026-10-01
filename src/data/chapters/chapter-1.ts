@@ -498,7 +498,10 @@ export const chapter1: Chapter = {
       id: "focal-length",
       more: details.focalLength,
       term: "Focale",
-      definition: "Distance en mm qui détermine l'angle de champ. 18 mm = grand angle, 55 mm = plus serré.",
+      definition:
+        "Le « niveau de zoom » de l'objectif, en millimètres : il fixe l'angle de champ. Petit chiffre (18 mm) = on voit large, grand chiffre (55 mm) = on voit serré.",
+      pitfall:
+        "Sur un capteur APS-C comme celui du D3500, le cadrage correspond à une focale 1,5 fois plus longue en plein format : le 18-55 cadre comme un 27-82 mm, le 35 mm comme un 52 mm.",
     },
     {
       id: "weather-sealed",
@@ -661,6 +664,30 @@ export const chapter1: Chapter = {
       distractors: ["1/250 s", "1/125 s", "1/1000 s"],
       explanation: "1/30 de seconde dure plus longtemps que 1/250 : l'obturateur reste ouvert plus longtemps.",
       keyword: "dure plus longtemps",
+    },
+    {
+      id: "zoom-in-place",
+      more: details.focalLength,
+      prompt: "Sans bouger, tu passes de 18 mm à 55 mm. Que se passe-t-il ?",
+      answer: "Le cadrage se resserre : le sujet paraît plus gros, on voit moins de choses autour",
+      distractors: [
+        "L'image devient plus lumineuse",
+        "La profondeur de champ augmente",
+        "Le cadrage s'élargit : on voit davantage de décor",
+      ],
+      explanation:
+        "Une focale plus longue réduit l'angle de champ, comme un tube plus long qui ne laisse voir qu'un morceau du paysage. Attention aussi au bougé : à 55 mm, il faut une vitesse plus rapide qu'à 18 mm.",
+      keyword: "réduit l'angle de champ",
+    },
+    {
+      id: "crop-35mm",
+      more: details.focalLength,
+      prompt: "Sur ton D3500 (capteur APS-C), le 35 mm cadre comme quelle focale en plein format ?",
+      answer: "Environ 52 mm",
+      distractors: ["35 mm, c'est la même chose", "Environ 23 mm", "Environ 70 mm"],
+      explanation:
+        "Le capteur APS-C ne garde que le centre de l'image : on multiplie par 1,5 pour connaître le cadrage équivalent. 35 x 1,5 = 52 mm, proche du champ de vision de l'œil, d'où le surnom de « focale normale » sur APS-C.",
+      keyword: "35 x 1,5 = 52 mm",
     },
     {
       id: "iso-role",

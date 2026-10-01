@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bodyDistance, flashDistance, hitBody, surfaceNets, type MeshData } from "./body-sdf";
+import { bodyDistance, flashDistance, fromMm, hitBody, surfaceNets, type MeshData } from "./body-sdf";
 
 function faceAgreement(mesh: MeshData) {
   const p = mesh.positions;
@@ -25,8 +25,8 @@ describe("surface nets", () => {
 
   it("meshes the D3500 body quickly and consistently", () => {
     const start = performance.now();
-    const body = surfaceNets(bodyDistance, [-0.72, -0.58, -0.42], [0.76, 0.58, 0.52], 0.014);
-    const flash = surfaceNets(flashDistance, [-0.4, 0.3, -0.15], [0.25, 0.55, 0.25], 0.012);
+    const body = surfaceNets(bodyDistance, [-0.66, -0.5, -0.44], [0.66, 0.52, 0.34], 0.014);
+    const flash = surfaceNets(flashDistance, [-0.42, 0.34, -0.19], [0.1, 0.52, 0.34], 0.01);
     const elapsed = performance.now() - start;
     expect(faceAgreement(body)).toBeGreaterThan(0.99);
     expect(flash.indices.length).toBeGreaterThan(300);
@@ -34,10 +34,13 @@ describe("surface nets", () => {
   });
 
   it("finds controls on the curved shell", () => {
-    const top = hitBody([0.23, 1, -0.08], [0, -1, 0]);
+    // Mode dial deck, and the multi selector on the back (positions measured on the photos).
+    const top = hitBody(fromMm(20.5, 120, -39.8), [0, -1, 0]);
     expect(top).not.toBeNull();
     expect(top!.normal[1]).toBeGreaterThan(0.9);
-    const back = hitBody([0.41, -0.04, -1], [0, 0, 1]);
+    const back = hitBody(fromMm(26.7, 28, -120), [0, 0, 1]);
     expect(back!.normal[2]).toBeLessThan(-0.9);
+    // The back of the body sits about 60 mm behind the mount face.
+    expect(back!.position[2]).toBeCloseTo(fromMm(0, 0, -59.5)[2], 1);
   });
 });

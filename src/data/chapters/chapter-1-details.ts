@@ -129,9 +129,12 @@ export const details = {
   focalLength: {
     illustration: "focal-length",
     paragraphs: [
-      "La focale, en millimètres, détermine l'angle de champ : ce que l'objectif embrasse. Petite focale = grand angle, grande focale = cadrage serré.",
-      "Sur APS-C : 18 mm donne un grand angle, 35 mm un cadrage proche de l'œil humain, 55 mm un léger téléobjectif, pratique en portrait.",
-      "La focale change aussi la perspective apparente : un grand angle exagère les distances et déforme les visages de près, une focale longue écrase les plans.",
+      "La focale, c'est le « niveau de zoom » de l'objectif. Imagine que tu regardes dehors par un tube en carton : un tube court te montre tout le paysage, un tube long n'en montre qu'un petit morceau, comme agrandi. Les millimètres, c'est exactement ça : la distance entre le centre optique de l'objectif et le capteur.",
+      "Petite focale (18 mm) : grand-angle, environ 66° de champ. Pour le paysage, l'intérieur, l'architecture. Grande focale (55 mm) : environ 24° de champ, cadrage serré. Pour le portrait, un détail, un sujet un peu éloigné.",
+      "Deux effets à connaître. Le bougé : plus la focale est longue, plus le moindre tremblement est grossi, d'où la règle vitesse ≥ 1 / (focale x 1,5) sur APS-C, soit 1/30 s à 18 mm mais plutôt 1/80 s à 55 mm. Le flou d'arrière-plan : à cadrage du sujet égal, une focale longue isole mieux le sujet de son fond.",
+      "Sur un capteur APS-C, le cadrage équivaut à une focale 1,5 fois plus longue en plein format : 18-55 mm devient 27-82 mm, et 35 mm devient environ 52 mm, proche du champ de l'œil humain.",
+      "Attention à un raccourci courant : ce n'est pas la focale qui « écrase » ou « étire » les plans, c'est la distance au sujet. Un grand-angle pousse à s'approcher (visages déformés de près), une longue focale à reculer (plans qui paraissent tassés).",
+      "Exercice : reste au même endroit et photographie le même sujet à 18 puis à 55 mm. Ensuite, retrouve le cadrage du 55 mm à 18 mm en t'avançant : le fond change complètement, c'est l'effet de la distance.",
     ],
   },
   weatherSealed: {
