@@ -1,22 +1,21 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { chapters } from "@/data/chapters";
 import type { Camera, Term } from "@/types";
 import { BackButton } from "../play/back-button";
 import { useIsClient } from "../play/use-is-client";
+import { CameraLoader } from "../camera3d/camera-loader";
+import type { LoadStage } from "../camera3d/camera-viewer";
 import { DURATION, EASE_OUT, micro } from "../motion-tokens";
 
-const CameraViewer = dynamic(() => import("../camera3d/camera-viewer"), {
-  ssr: false,
-  loading: () => <ViewerPlaceholder label="Chargement du modèle 3D…" />,
-});
+// The loader overlay covers the canvas while the chunk downloads: nothing to render here.
+const CameraViewer = dynamic(() => import("../camera3d/camera-viewer"), { ssr: false, loading: () => null });
 
-function ViewerPlaceholder({ label }: { label: string }) {
-  return <div className="grid size-full place-items-center text-fluid-sm text-muted">{label}</div>;
-}
+/** Wait for the page transition to finish before doing any heavy 3D work. */
+const TRANSITION_MS = DURATION.screen * 1000 + 60;
 
 const allTerms: Term[] = chapters.flatMap((c) => c.vocabulary);
 
@@ -27,6 +26,13 @@ export function Camera3dScreen({ camera, onBack }: { camera: Camera; onBack: () 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [exploded, setExploded] = useState(false);
   const isClient = useIsClient();
+  const reduced = useReducedMotion();
+  const [mountViewer, setMountViewer] = useState(false);
+  const [stage, setStage] = useState<LoadStage>("engine");
+  useEffect(() => {
+    const timer = setTimeout(() => setMountViewer(true), reduced ? 0 : TRANSITION_MS);
+    return () => clearTimeout(timer);
+  }, [reduced]);
   const index = parts.findIndex((p) => p.id === selectedId);
   const part = index >= 0 ? parts[index] : null;
   const terms = (part?.terms ?? []).map((id) => allTerms.find((t) => t.id === id)).filter((t): t is Term => !!t);
@@ -45,7 +51,25 @@ export function Camera3dScreen({ camera, onBack }: { camera: Camera; onBack: () 
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] landscape-phone:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="relative h-[52dvh] min-h-72 overflow-hidden rounded-2xl border border-line lg:h-[68dvh] landscape-phone:h-[78dvh]">
-          {isClient ? <CameraViewer parts={parts} selectedId={selectedId} onSelect={setSelectedId} exploded={exploded} model={camera.model3d} pick={pick} /> : <ViewerPlaceholder label="Modèle 3D" />}
+          {isClient && mountViewer && (
+            <CameraViewer
+              parts={parts}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              exploded={exploded}
+              model={camera.model3d}
+              pick={pick}
+              onStage={setStage}
+            />
+          )}
+          <div
+            aria-hidden={stage === "ready"}
+            className={`absolute inset-0 grid place-items-center bg-[radial-gradient(ellipse_at_50%_35%,#2a2d36_0%,#121318_55%,#0b0c0f_100%)] transition-opacity duration-500 ${
+              stage === "ready" ? "pointer-events-none opacity-0" : "opacity-100"
+            }`}
+          >
+            <CameraLoader stage={stage} />
+          </div>
           <div className="absolute top-3 right-3 flex gap-2">
             {!camera.model3d && (
               <button

@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, animate, motion, useMotionValue } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatAperture, formatSeconds } from "@/engine/format";
 import { shuffle } from "@/engine/random";
 import {
@@ -45,6 +45,12 @@ export function SimulatorMode({ chapter, camera, onAnswer, onProgress, onComplet
   const [limit, setLimit] = useState<{ message: string; key: number } | null>(null);
 
   const done = round.n - 1 + (scored ? 1 : 0);
+
+  // Bring the verdict into view as soon as the shot is taken.
+  const resultRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (result) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [result]);
   useEffect(() => {
     onProgress({ done, total: scenarios.length, unit: UNIT });
   }, [done, scenarios.length, onProgress]);
@@ -191,7 +197,7 @@ export function SimulatorMode({ chapter, camera, onAnswer, onProgress, onComplet
           </div>
 
           {result && (
-            <div className="lg:col-span-2 landscape-phone:col-start-2">
+            <div ref={resultRef} className="scroll-mt-[calc(var(--safe-top)+var(--bar-height)+1rem)] lg:col-span-2 landscape-phone:col-start-2">
               <ResultPanel
                 result={result.result}
                 example={

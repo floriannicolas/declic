@@ -7,7 +7,7 @@ import { useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Vector3 } from "three";
 import type { BodyAnchor, CameraModel3d, CameraPart, ModelSpot } from "@/types";
-import { ANCHORS, BodyModel } from "./body-model";
+import { ANCHORS, BodyModel, useBodyMeshes } from "./body-model";
 import { ScannedModel, SpotHalo } from "./scanned-model";
 
 type Spots = Readonly<Partial<Record<BodyAnchor, ModelSpot>>>;
@@ -26,10 +26,20 @@ interface Props {
   model?: CameraModel3d;
   /** Development aid: clicking the model logs the spot under the pointer. */
   pick?: boolean;
+  /** Loading progress, for the loader shown over the canvas. */
+  onStage?: (stage: LoadStage) => void;
 }
 
+export type LoadStage = "engine" | "moulding" | "lighting" | "ready";
+
 /** Interactive 3D body. Loaded on demand: three.js stays out of the rest of the game. */
-export default function CameraViewer({ parts: allParts, selectedId, onSelect, exploded, model, pick }: Props) {
+export default function CameraViewer({ parts: allParts, selectedId, onSelect, exploded, model, pick, onStage }: Props) {
+  // The generic body is meshed in a worker; a scanned model needs no meshing.
+  const meshes = useBodyMeshes(model === undefined);
+  const shapeReady = model !== undefined || meshes !== null;
+  useEffect(() => {
+    onStage?.(shapeReady ? "lighting" : "moulding");
+  }, [shapeReady, onStage]);
   const spots: Spots = model ? model.spots : ANCHORS;
   // Controls absent from this body (or not placed on the model) are simply not shown.
   // A scanned model only shows the controls that were placed on it.
@@ -56,10 +66,11 @@ export default function CameraViewer({ parts: allParts, selectedId, onSelect, ex
             {selected && spots[selected.anchor] && <SpotHalo spot={spots[selected.anchor]!} />}
           </>
         ) : (
-          <BodyModel selected={selected?.anchor ?? null} exploded={exploded} />
+          meshes && <BodyModel selected={selected?.anchor ?? null} exploded={exploded} meshes={meshes} />
         )}
         <ContactShadows position={[0, -0.5, 0]} opacity={0.65} scale={5} blur={2.6} far={1.2} resolution={512} color="#000000" />
         <MarkerProjector parts={parts} spots={spots} selectedId={selectedId} markers={markers} />
+        {shapeReady && <FirstFrames onDone={() => onStage?.("ready")} />}
         <Rig target={selected && spots[selected.anchor] ? spots[selected.anchor]! : null} exploded={exploded} />
         {quality === "high" && (
           <EffectComposer multisampling={4}>
@@ -143,6 +154,18 @@ function Rig({ target, exploded }: { target: ModelSpot | null; exploded: boolean
   });
 
   return <CameraControls ref={controls} minDistance={0.9} maxDistance={7} smoothTime={0.5} />;
+}
+
+/** Signals readiness once the model has actually been drawn a few times (shaders compiled). */
+function FirstFrames({ onDone }: { onDone: () => void }) {
+  const frames = useRef(0);
+  const done = useRef(false);
+  useFrame(() => {
+    if (done.current || ++frames.current < 3) return;
+    done.current = true;
+    onDone();
+  });
+  return null;
 }
 
 /**

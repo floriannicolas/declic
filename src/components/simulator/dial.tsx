@@ -5,9 +5,17 @@ import { useEffect, useRef, useState } from "react";
 import { isFullStop, type DialScale } from "@/engine/simulator";
 import { SPRING } from "../motion-tokens";
 
-const STEP_DEG = 15;
-const PX_PER_STEP = 18;
-const WINDOW = 11;
+/** Angle between two values on the ring: wider for coarse scales so every label has room. */
+const FINE_STEP_DEG = 15;
+const COARSE_STEP_DEG = 34;
+/** Close to the centre the drag angle is unstable: ignore that zone. */
+const DEAD_ZONE = 0.18;
+
+/** A scale is coarse when most of its values are full stops (ISO on some bodies). */
+function stepDegrees(scale: DialScale) {
+  const majors = scale.values.filter((v) => isFullStop(scale.setting, v)).length;
+  return majors / scale.values.length > 0.6 ? COARSE_STEP_DEG : FINE_STEP_DEG;
+}
 const WHEEL_STEP = 40;
 const LIMIT_OVERSHOOT = 0.25;
 
@@ -43,10 +51,22 @@ interface Props {
 }
 
 export function Dial({ scale, caption, index, position, onChange, onLimit, onActivate, locked, className, help }: Props) {
-  const rotate = useTransform(position, (p) => -detent(p) * STEP_DEG);
+  const stepDeg = stepDegrees(scale);
+  const window = Math.floor(165 / stepDeg);
+  const rotate = useTransform(position, (p) => -detent(p) * stepDeg);
   const [pointer, animatePointer] = useAnimate();
   const surface = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ x: number; y: number; start: number; last: number; raw: number; moved: boolean } | null>(null);
+  const drag = useRef<{
+    cx: number;
+    cy: number;
+    radius: number;
+    angle: number;
+    turned: number;
+    start: number;
+    last: number;
+    raw: number;
+    moved: boolean;
+  } | null>(null);
   const [roll, setRoll] = useState({ index, direction: 1 });
   if (roll.index !== index) setRoll({ index, direction: index > roll.index ? 1 : -1 });
 
@@ -99,17 +119,41 @@ export function Dial({ scale, caption, index, position, onChange, onLimit, onAct
     if (locked) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     position.stop();
-    drag.current = { x: e.clientX, y: e.clientY, start: index, last: index, raw: index, moved: false };
+    const box = e.currentTarget.getBoundingClientRect();
+    const cx = box.left + box.width / 2;
+    const cy = box.top + box.height / 2;
+    drag.current = {
+      cx,
+      cy,
+      radius: box.width / 2,
+      angle: Math.atan2(e.clientY - cy, e.clientX - cx),
+      turned: 0,
+      start: index,
+      last: index,
+      raw: index,
+      moved: false,
+    };
   };
 
+  /**
+   * The ring is grabbed like a real dial: the graduations follow the finger
+   * around the centre, whichever part of the ring is touched.
+   */
   const onPointerMove = (e: React.PointerEvent) => {
     const d = drag.current;
     if (!d) return;
-    const dx = e.clientX - d.x;
-    const dy = e.clientY - d.y;
-    if (!d.moved && Math.hypot(dx, dy) < 4) return;
+    const dx = e.clientX - d.cx;
+    const dy = e.clientY - d.cy;
+    if (Math.hypot(dx, dy) < d.radius * DEAD_ZONE) return;
+    const angle = Math.atan2(dy, dx);
+    let delta = angle - d.angle;
+    if (delta > Math.PI) delta -= 2 * Math.PI;
+    if (delta < -Math.PI) delta += 2 * Math.PI;
+    d.angle = angle;
+    d.turned += (delta * 180) / Math.PI;
+    if (!d.moved && Math.abs(d.turned) < 3) return;
     d.moved = true;
-    let raw = d.start + (dx - dy) / PX_PER_STEP;
+    let raw = d.start - d.turned / stepDeg;
     if (raw < scale.min) raw = scale.min - rubber(scale.min - raw);
     if (raw > scale.max) raw = scale.max + rubber(raw - scale.max);
     d.raw = raw;
@@ -142,14 +186,14 @@ export function Dial({ scale, caption, index, position, onChange, onLimit, onAct
     }
   };
 
-  const first = Math.max(0, index - WINDOW);
-  const last = Math.min(scale.values.length - 1, index + WINDOW);
+  const first = Math.max(0, index - window);
+  const last = Math.min(scale.values.length - 1, index + window);
   const ticks = [];
   for (let i = first; i <= last; i++) {
     const major = isFullStop(scale.setting, scale.values[i]);
     const outside = i < scale.min || i > scale.max;
     ticks.push(
-      <g key={i} transform={`rotate(${i * STEP_DEG} 100 100)`}>
+      <g key={i} transform={`rotate(${i * stepDeg} 100 100)`}>
         <line
           x1="100"
           x2="100"
@@ -163,9 +207,9 @@ export function Dial({ scale, caption, index, position, onChange, onLimit, onAct
         {major && (
           <text
             x="100"
-            y="37"
+            y="38"
             textAnchor="middle"
-            fontSize="13"
+            fontSize={scale.labels[i].length > 4 ? 11.5 : 13}
             fontWeight={600}
             fill={outside ? "var(--bad)" : "var(--muted)"}
             opacity={outside ? 0.55 : 0.9}

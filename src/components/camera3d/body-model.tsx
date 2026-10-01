@@ -1,7 +1,7 @@
 "use client";
 
 import { RoundedBox } from "@react-three/drei";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BufferAttribute,
   BufferGeometry,
@@ -17,7 +17,7 @@ import {
 } from "three";
 import type { BodyAnchor } from "@/types";
 import { Animated, type Pose } from "./animated";
-import { bodyDistance, flashDistance, hitBody, isGrip, surfaceNets, type MeshData, type V3 } from "./body-sdf";
+import { bodyDistance, buildBodyMeshes, flashDistance, hitBody, type BodyMeshes, type MeshData, type V3 } from "./body-sdf";
 import { LensModel, type LensState } from "./lens-model";
 import { useMaterials, type Materials } from "./materials";
 import { engraving, flipX, infoScreen, radialLabels } from "./textures";
@@ -148,36 +148,47 @@ const MODE_LABELS = ["AUTO", "⊘", "P", "S", "A", "M", "EFFECTS", "GUIDE", "☺
 /** Rotation turning local +y onto a surface normal. */
 const align = (normal: Vec3) => new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), new Vector3(...normal).normalize());
 
-function toGeometry(mesh: MeshData, split?: (x: number, y: number, z: number) => boolean) {
+function toGeometry(mesh: MeshData, shellIndexCount?: number) {
   const g = new BufferGeometry();
   g.setAttribute("position", new BufferAttribute(mesh.positions, 3));
   g.setAttribute("normal", new BufferAttribute(mesh.normals, 3));
   g.setAttribute("uv", new BufferAttribute(mesh.uvs, 2));
-  if (!split) {
-    g.setIndex(new BufferAttribute(mesh.indices, 1));
-    return g;
+  g.setIndex(new BufferAttribute(mesh.indices, 1));
+  if (shellIndexCount !== undefined) {
+    // Two material groups: shell first, rubber covering second.
+    g.addGroup(0, shellIndexCount, 0);
+    g.addGroup(shellIndexCount, mesh.indices.length - shellIndexCount, 1);
   }
-  // Two material groups: shell first, rubber covering second.
-  const shell: number[] = [];
-  const rubber: number[] = [];
-  const p = mesh.positions;
-  for (let t = 0; t < mesh.indices.length; t += 3) {
-    const [a, b, c] = [mesh.indices[t], mesh.indices[t + 1], mesh.indices[t + 2]];
-    const cx = (p[a * 3] + p[b * 3] + p[c * 3]) / 3;
-    const cy = (p[a * 3 + 1] + p[b * 3 + 1] + p[c * 3 + 1]) / 3;
-    const cz = (p[a * 3 + 2] + p[b * 3 + 2] + p[c * 3 + 2]) / 3;
-    (split(cx, cy, cz) ? rubber : shell).push(a, b, c);
-  }
-  g.setIndex(new BufferAttribute(new Uint32Array([...shell, ...rubber]), 1));
-  g.addGroup(0, shell.length, 0);
-  g.addGroup(shell.length, rubber.length, 1);
   return g;
 }
 
-function useBodyGeometry() {
+/**
+ * Meshes the body in a Web Worker: half a second of math that would otherwise
+ * freeze the page. Falls back to the main thread where workers are missing.
+ */
+export function useBodyMeshes(enabled = true): BodyMeshes | null {
+  const [meshes, setMeshes] = useState<BodyMeshes | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    if (typeof Worker === "undefined") {
+      const timer = setTimeout(() => setMeshes(buildBodyMeshes()), 0);
+      return () => clearTimeout(timer);
+    }
+    const worker = new Worker(new URL("./body-meshes.worker.ts", import.meta.url), { type: "module" });
+    worker.onmessage = (e: MessageEvent<BodyMeshes>) => {
+      setMeshes(e.data);
+      worker.terminate();
+    };
+    worker.postMessage(null);
+    return () => worker.terminate();
+  }, [enabled]);
+  return meshes;
+}
+
+function useBodyGeometry(meshes: BodyMeshes) {
   const geometry = useMemo(() => {
-    const body = toGeometry(surfaceNets(bodyDistance, [-0.72, -0.58, -0.42], [0.76, 0.58, 0.52], 0.012), isGrip);
-    const flash = toGeometry(surfaceNets(flashDistance, [-0.4, 0.3, -0.12], [0.25, 0.55, 0.3], 0.008));
+    const body = toGeometry(meshes.body, meshes.body.shellIndexCount);
+    const flash = toGeometry(meshes.flash);
     flash.translate(-FLASH_HINGE[0], -FLASH_HINGE[1], -FLASH_HINGE[2]);
     // Red swoosh hugging the front of the grip.
     const swooshPoints = [
@@ -189,7 +200,7 @@ function useBodyGeometry() {
     ].map(([x, y]) => new Vector3(...lift(onFront(x, y), 0.004)));
     const swoosh = new TubeGeometry(new CatmullRomCurve3(swooshPoints), 64, 0.008, 10, false);
     return { body, flash, swoosh };
-  }, []);
+  }, [meshes]);
   useEffect(() => () => Object.values(geometry).forEach((g) => g.dispose()), [geometry]);
   return geometry;
 }
@@ -295,11 +306,12 @@ function Holes({ spot, m, count = 3 }: { spot: Spot; m: Materials; count?: numbe
 export interface BodyState {
   selected: BodyAnchor | null;
   exploded: boolean;
+  meshes: BodyMeshes;
 }
 
-export function BodyModel({ selected, exploded }: BodyState) {
+export function BodyModel({ selected, exploded, meshes }: BodyState) {
   const m = useMaterials();
-  const geometry = useBodyGeometry();
+  const geometry = useBodyGeometry(meshes);
   const lv = useLiveViewGeometry();
   const is = (...anchors: BodyAnchor[]) => selected !== null && anchors.includes(selected);
   const x = exploded ? 1 : 0;

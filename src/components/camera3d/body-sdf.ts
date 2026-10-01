@@ -266,3 +266,32 @@ export function hitBody(origin: V3, direction: V3, sdf = bodyDistance): { positi
   }
   return null;
 }
+
+/** Sampling grids of the two meshes, shared by the worker and the fallback. */
+const BODY_GRID = { min: [-0.72, -0.58, -0.42] as V3, max: [0.76, 0.58, 0.52] as V3, step: 0.012 };
+const FLASH_GRID = { min: [-0.4, 0.3, -0.12] as V3, max: [0.25, 0.55, 0.3] as V3, step: 0.008 };
+
+export interface BodyMeshes {
+  /** Indices are ordered shell first, then rubber: `shellIndexCount` splits the two material groups. */
+  body: MeshData & { shellIndexCount: number };
+  flash: MeshData;
+}
+
+/** The whole costly part of the 3D view (about half a second): run it in a worker. */
+export function buildBodyMeshes(): BodyMeshes {
+  const body = surfaceNets(bodyDistance, BODY_GRID.min, BODY_GRID.max, BODY_GRID.step);
+  const shell: number[] = [];
+  const rubber: number[] = [];
+  const p = body.positions;
+  for (let t = 0; t < body.indices.length; t += 3) {
+    const [a, b, c] = [body.indices[t], body.indices[t + 1], body.indices[t + 2]];
+    const cx = (p[a * 3] + p[b * 3] + p[c * 3]) / 3;
+    const cy = (p[a * 3 + 1] + p[b * 3 + 1] + p[c * 3 + 1]) / 3;
+    const cz = (p[a * 3 + 2] + p[b * 3 + 2] + p[c * 3 + 2]) / 3;
+    (isGrip(cx, cy, cz) ? rubber : shell).push(a, b, c);
+  }
+  return {
+    body: { ...body, indices: new Uint32Array([...shell, ...rubber]), shellIndexCount: shell.length },
+    flash: surfaceNets(flashDistance, FLASH_GRID.min, FLASH_GRID.max, FLASH_GRID.step),
+  };
+}
